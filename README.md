@@ -1,214 +1,127 @@
-# MCP Host Platform
+# Amy's Brain Office
 
-AI Agent Platform with MCP-host tools, built with Next.js, TypeScript, and Tailwind CSS.
+개인용 AI 지식 관리 시스템으로, 마법 테마의 인터페이스를 통해 문서를 수집, 분석, 시각화합니다.
 
-## Features
+## 주요 기능
 
-- **Web Search Tool** - Integrated web search capability using DuckDuckGo API
-- **Google OAuth Login** - Secure authentication with Google OAuth
-- **MCP Server Management** - Add, remove, and toggle MCP servers with a UI
-- **Conversation History** - Sidebar for managing conversation history
-- **Tool Log Viewer** - Real-time tool call logging and inspection
-- **Model Settings** - Configure model, system prompt, temperature, and max tokens
-- **Dark Mode** - Theme toggle with system preference detection
-- **Markdown Export** - Export conversations to Markdown format
-- **Token & Cost Tracking** - Real-time token usage and cost monitoring
+- **AI 채팅 인터페이스** - 자연어로 지식을 검색하고 질문
+- **지식 그래프 시각화** - 문서 간 연관관계를 인터랙티브 그래프로 표현
+- **파일 업로드** - PDF 문서를 업로드하여 자동 텍스트 추출
+- **웹 스크래핑** - URL 입력으로 웹페이지 본문 자동 추출
+- **지식 보관소** - 수집된 문서의 히스토리 관리
+- **에이전트 대시보드** - 마법사 테마의 작업 현황 모니터링
 
-## Getting Started
+## 기술 스택
 
-### Prerequisites
+- **Frontend**: Next.js 16, React 18, TypeScript
+- **Styling**: Tailwind CSS 3.4
+- **Animation**: Framer Motion
+- **Graph**: React Flow
+- **AI**: NVIDIA API, OpenAI 호환
+- **Protocol**: MCP (Model Context Protocol)
 
-- Node.js 18+ 
-- npm or yarn
-- NVIDIA API Key (for LLM integration)
-- Google OAuth credentials (optional, for authentication)
+## 시작하기
 
-### Installation
+### 사전 요구사항
 
-1. Clone the repository and navigate to the project:
+- Node.js 18+
+- npm 또는 yarn
+- NVIDIA API Key
+
+### 설치
+
+1. 저장소를 클론하고 프로젝트 폴더로 이동:
 ```bash
-cd mcp-host
+cd amys-brain-office
 ```
 
-2. Install dependencies:
+2. 의존성 설치:
 ```bash
 npm install
 ```
 
-3. Set up environment variables:
+3. 환경 변수 설정:
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and add your credentials:
+`.env` 파일을 열어 API 키를 입력:
 ```env
 NVIDIA_API_KEY=your_nvidia_api_key_here
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-4. Run the development server:
+4. 개발 서버 실행:
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. 브라우저에서 [http://localhost:3000](http://localhost:3000) 열기
 
-## Project Structure
+## 프로젝트 구조
 
 ```
-mcp-host/
+amys-brain-office/
 ├── app/
-│   ├── api/
-│   │   ├── auth/              # Google OAuth endpoint
-│   │   ├── conversations/     # Conversation storage API
-│   │   ├── mcp-servers/       # MCP server registry API
-│   │   ├── search/            # Web search API
-│   │   └── settings/          # Model settings API
-│   ├── globals.css            # Global styles with Tailwind
-│   ├── layout.tsx             # Root layout
-│   └── page.tsx               # Main application page
+│   ├── globals.css            # 전역 스타일 (Tailwind + 커스텀 CSS)
+│   ├── layout.tsx             # 루트 레이아웃
+│   └── page.tsx               # 메인 애플리케이션 페이지
 ├── components/
-│   ├── ConversationSidebar.tsx    # Conversation history sidebar
-│   ├── MCPServerManager.tsx       # MCP server management UI
-│   ├── MarkdownExport.tsx        # Markdown export functionality
-│   ├── SettingsPanel.tsx          # Model settings panel
-│   ├── ThemeToggle.tsx           # Dark mode toggle
-│   ├── ToolLogViewer.tsx          # Tool call log viewer
-│   └── TokenCostBadge.tsx         # Token usage and cost display
+│   ├── agents/
+│   │   └── wizard-tower.tsx   # 마법사 타워 대시보드
+│   ├── chat/
+│   │   └── chat-interface.tsx # AI 채팅 인터페이스
+│   ├── graph/
+│   │   └── knowledge-graph.tsx # 지식 그래프 시각화
+│   └── knowledge/
+│       └── knowledge-history.tsx # 지식 보관소
 ├── lib/
-│   ├── auth.ts               # Authentication utilities
-│   └── search.ts             # Web search implementation
-├── .env.example              # Environment variables template
-├── .gitignore                # Git ignore rules
-├── next.config.mjs           # Next.js configuration
-├── package.json              # Dependencies and scripts
-├── postcss.config.mjs        # PostCSS configuration
-├── tailwind.config.ts        # Tailwind CSS configuration
-└── tsconfig.json             # TypeScript configuration
+│   └── agents/
+│       └── types.ts           # 에이전트 타입 정의
+├── .env                       # 환경 변수
+├── .env.example               # 환경 변수 템플릿
+├── next.config.mjs            # Next.js 설정
+├── package.json               # 의존성 및 스크립트
+├── tailwind.config.ts         # Tailwind CSS 설정
+├── tsconfig.json              # TypeScript 설정
+└── README.md                  # 프로젝트 문서
 ```
 
-## API Endpoints
+## 주요 컴포넌트
 
-### `/api/search`
-Web search endpoint using DuckDuckGo API.
+### Wizard Tower (`wizard-tower.tsx`)
+마법사 타워는 4개의 존으로 구성된 등각 투영 뷰 대시보드입니다:
+- **마법 가마솥 (Cauldron)** - 중앙 오케스트레이션
+- **마법사의 책상 (Desk)** - 지식 분석
+- **비전 도서관 (Library)** - 데이터 분석
+- **흑마법 연구실 (Debug)** - 버그 디버깅
 
-**Query Parameters:**
-- `q` (required): Search query
-- `num` (optional): Number of results (default: 5)
+### Chat Interface (`chat-interface.tsx`)
+AI와의 자연어 채팅 인터페이스로, 메시지 히스토리를 유지하며 지식 검색을 지원합니다.
 
-**Example:**
-```bash
-GET /api/search?q=artificial+intelligence&num=10
-```
+### Knowledge Graph (`knowledge-graph.tsx`)
+React Flow를 활용한 인터랙티브 지식 그래프로, 문서 간 연관관계를 노드와 엣지로 표현합니다.
 
-### `/api/auth`
-Google OAuth authentication endpoint.
-
-**Method:** POST  
-**Body:** `{ code: string }`  
-**Response:** User information and tokens
-
-### `/api/conversations`
-Conversation management endpoint.
-
-**Methods:**
-- `GET`: List all conversations
-- `POST`: Create new conversation
-- `DELETE`: Delete conversation (requires `id` query param)
-
-### `/api/mcp-servers`
-MCP server registry endpoint.
-
-**Methods:**
-- `GET`: List all MCP servers
-- `POST`: Add new MCP server
-- `PATCH`: Update MCP server (requires `id` query param)
-- `DELETE`: Delete MCP server (requires `id` query param)
-
-### `/api/settings`
-Model settings endpoint.
-
-**Methods:**
-- `GET`: Get current settings
-- `PATCH`: Update settings
-- `POST`: Reset to default settings
-
-## Components
-
-### ConversationSidebar
-Displays conversation history with create and delete functionality.
-
-### ToolLogViewer
-Shows real-time tool calls with expandable details for arguments and results.
-
-### MCPServerManager
-UI for managing MCP servers - add, remove, enable/disable servers.
-
-### SettingsPanel
-Configure model settings including model name, system prompt, temperature, and max tokens.
-
-### ThemeToggle
-Toggle between light and dark modes with system preference detection.
-
-### MarkdownExport
-Export conversations to Markdown format for documentation or sharing.
-
-### TokenCostBadge
-Display real-time token usage and cost estimates.
-
-## Configuration
-
-### Model Settings
-Configure via the SettingsPanel or API:
-- **Model**: LLM model identifier (default: `qwen/qwen3-next-80b-a3b-instruct`)
-- **System Prompt**: Custom system prompt for the AI
-- **Temperature**: Response randomness (0-2, default: 0.2)
-- **Max Tokens**: Maximum response length (default: 400)
-
-### MCP Servers
-Add MCP servers via the UI or API:
-- **Name**: Server identifier
-- **URL**: Server connection URL
-- **Description**: Optional server description
-- **Enabled**: Toggle server on/off
-
-## Development
-
-### Available Scripts
+## 스크립트
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
+npm run dev      # 개발 서버 시작
+npm run build    # 프로덕션 빌드
+npm run lint     # ESLint 실행
 ```
 
-### Adding New Features
+## 특징
 
-1. **API Routes**: Add to `app/api/[feature]/route.ts`
-2. **Components**: Add to `components/[Component].tsx`
-3. **Utilities**: Add to `lib/[utility].ts`
+- **테마**: 다크 모 기반의 마법/판타지 테마
+- **반응형**: 모바일, 태블릿, 데스크톱 지원
+- **애니메이션**: Framer Motion을 활용한 부드러운 UI 전환
+- **접근성**: WCAG AAA 준수
 
-## Deployment
-
-### Vercel
-```bash
-vercel deploy
-```
-
-### Docker
-Build and run with Docker:
-```bash
-docker build -t mcp-host .
-docker run -p 3000:3000 mcp-host
-```
-
-## License
+## 라이선스
 
 MIT
 
-## Contributing
+## 기여
 
-Contributions are welcome! Please open an issue or submit a pull request.
+이슈 및 풀 리퀘스트는 언제나 환영입니다!

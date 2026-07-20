@@ -192,6 +192,7 @@ function IsometricTile({
     <motion.g
       onClick={onClick}
       style={{ cursor: 'pointer' }}
+      transform={`translate(${isoX},${isoY})`}
       whileHover={{ y: -4, filter: 'brightness(1.3)' }}
       whileTap={{ scale: 0.95 }}
       initial={{ opacity: 0, y: 20 }}

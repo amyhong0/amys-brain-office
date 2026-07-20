@@ -83,7 +83,22 @@ export default function Home() {
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setGraphNodes([{ id: 'mock-1', position: { x: 100, y: 100 }, data: { label: 'Knowledge Node' } }]);
+    setGraphNodes([
+      { id: 'node-1', position: { x: 0, y: 0 }, data: { type: 'pdf', label: 'NVIDIA GPU', metadata: { title: 'NVIDIA AI GPU 아키텍처 분석', type: 'pdf', tags: ['AI', 'GPU', 'NVIDIA'], createdAt: '2026-07-20' } } },
+      { id: 'node-2', position: { x: 120, y: -80 }, data: { type: 'pdf', label: 'MCP Protocol', metadata: { title: 'MCP 프로토콜 기술 문서', type: 'pdf', tags: ['MCP', '프로토콜', 'AI'], createdAt: '2026-07-19' } } },
+      { id: 'node-3', position: { x: -120, y: 80 }, data: { type: 'web', label: 'Multi-Agent', metadata: { title: '멀티 에이전트 시스템 설계', type: 'web', tags: ['AI', '에이전트', '아키텍처'], createdAt: '2026-07-17', url: 'https://example.com/multi-agent' } } },
+      { id: 'node-4', position: { x: 200, y: 100 }, data: { type: 'image', label: 'Architecture', metadata: { title: '시스템 아키텍처 다이어그램', type: 'image', tags: ['아키텍처', '설계'], createdAt: '2026-07-15' } } },
+      { id: 'node-5', position: { x: -200, y: -60 }, data: { type: 'web', label: 'Python Guide', metadata: { title: 'Python 비동기 프로그래밍 가이드', type: 'web', tags: ['Python', '비동기'], createdAt: '2026-07-14', url: 'https://example.com/python' } } },
+      { id: 'node-6', position: { x: 50, y: -180 }, data: { type: 'pdf', label: 'React Patterns', metadata: { title: 'React 고급 패턴 모음', type: 'pdf', tags: ['React', 'Frontend'], createdAt: '2026-07-12' } } },
+    ]);
+    setGraphEdges([
+      { id: 'edge-1', source: 'node-1', target: 'node-2', data: { strength: 2 } },
+      { id: 'edge-2', source: 'node-1', target: 'node-3', data: { strength: 1 } },
+      { id: 'edge-3', source: 'node-3', target: 'node-4', data: { strength: 1 } },
+      { id: 'edge-4', source: 'node-2', target: 'node-5', data: { strength: 1 } },
+      { id: 'edge-5', source: 'node-1', target: 'node-6', data: { strength: 1 } },
+      { id: 'edge-6', source: 'node-3', target: 'node-5', data: { strength: 1 } },
+    ]);
   }, []);
 
   const addMessage = useCallback((msg: Message) => {
