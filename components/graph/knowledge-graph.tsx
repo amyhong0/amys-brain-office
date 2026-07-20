@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactFlow, {
   Node,
   Edge,
@@ -9,10 +10,6 @@ import ReactFlow, {
   MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
-  Connection,
-  MarkerType,
-  NodeTypes
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -22,311 +19,218 @@ interface KnowledgeGraphProps {
   onNodeClick?: (node: Node) => void;
 }
 
-interface GraphNodeData {
-  label: string;
-  type?: string;
-  metadata?: {
-    title?: string;
-    type?: string;
-    tags?: string[];
-    createdAt?: string;
-    url?: string;
-  };
-  [key: string]: unknown;
-}
-
-// Obsidian-inspired color palette
-const OBSIDIAN_COLORS = {
-  bg: '#1a1a2e',
-  node: {
-    default: '#8b5cf6',
+function getNodeColor(type: string): string {
+  const colors: Record<string, string> = {
     pdf: '#60a5fa',
     web: '#34d399',
     image: '#fbbf24',
-  },
-  edge: {
-    default: 'rgba(139, 92, 246, 0.2)',
-    connected: 'rgba(167, 139, 250, 0.35)',
-  },
-};
-
-function getNodeColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    pdf: OBSIDIAN_COLORS.node.pdf,
-    web: OBSIDIAN_COLORS.node.web,
-    image: OBSIDIAN_COLORS.node.image,
-    default: OBSIDIAN_COLORS.node.default,
+    default: '#8b5cf6',
   };
-  return colorMap[type] || colorMap.default;
+  return colors[type] || colors.default;
 }
 
-// Obsidian-style custom node component (small glowing dot)
-function ObsidianNode({ data }: { data: GraphNodeData }) {
-  const nodeColor = getNodeColor(data.type || 'default');
-  const connectionCount = data.metadata?.tags?.length || 0;
-  const size = Math.max(8, Math.min(20, 6 + connectionCount * 2));
-  const label = data.metadata?.title || data.label || 'Untitled';
-  const isSelected = data.selected === true;
+// Generate cosmic/star-like scattered positions
+function generateCosmicPositions(nodes: Node[]): Node[] {
+  // Create star field distribution - random but within view
+  return nodes.map((node, index) => {
+    const type = (node.data?.type as string) || 'default';
+    const tags = (node.data?.metadata as { tags?: string[] })?.tags || [];
+    const tagCount = tags.length || 1;
+    const size = Math.max(8, Math.min(16, 6 + tagCount * 2));
+    const color = getNodeColor(type);
+
+    // Scatter nodes in a cosmic pattern
+    const angle = (index * Math.PI * 2) / nodes.length;
+    const radius = 80 + Math.random() * 60;
+    const centerX = 200;
+    const centerY = 150;
+    
+    const x = centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 30;
+    const y = centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 30;
+
+    return {
+      ...node,
+      position: { x, y },
+      style: {
+        width: size * 2,
+        height: size * 2,
+        background: `radial-gradient(circle, ${color}cc, ${color}88)`,
+        border: '1px solid rgba(255,255,255,0.2)',
+        borderRadius: '50%',
+        boxShadow: `0 0 8px ${color}66`,
+      },
+    };
+  });
+}
+
+// Knowledge Detail Modal - shows full content
+function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => void }) {
+  const metadata = node.data?.metadata as {
+    title?: string;
+    tags?: string[];
+    type?: string;
+    createdAt?: string;
+    url?: string;
+    content?: string;
+  } | undefined;
+
+  const typeLabels: Record<string, string> = {
+    pdf: 'PDF 문서',
+    web: '웹 문서',
+    image: '이미지',
+    default: '문서',
+  };
+
+  // Simulated knowledge base content
+  const knowledgeContent = metadata?.content || 
+    `${metadata?.title || '지식'}에 대한 상세 내용입니다.\n\n이 지식은 ${metadata?.createdAt || '알 수 없는 시점'}에 수집되었습니다.\n태그: ${metadata?.tags?.join(', ') || '없음'}\n\n더 자세한 내용은 실제 문서를 참조해주세요.`;
 
   return (
-    <div className="relative flex flex-col items-center">
-      <div
-        className="rounded-full transition-all duration-300 ease-out cursor-pointer"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="max-w-md w-full max-h-[80vh] overflow-y-auto rounded-xl p-5"
         style={{
-          width: size * 2 + 'px',
-          height: size * 2 + 'px',
-          background: 'radial-gradient(circle at 35% 35%, ' + nodeColor + 'ee, ' + nodeColor + '88)',
-          boxShadow: isSelected
-            ? '0 0 20px ' + nodeColor + '88, 0 0 40px ' + nodeColor + '44, inset 0 0 8px rgba(255,255,255,0.15)'
-            : '0 0 8px ' + nodeColor + '33, inset 0 0 4px rgba(255,255,255,0.06)',
-          border: isSelected
-            ? '2px solid ' + nodeColor
-            : '1px solid rgba(255,255,255,0.06)',
-          transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+          background: 'linear-gradient(135deg, rgba(30, 15, 50, 0.95), rgba(20, 10, 40, 0.95))',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
         }}
-      />
-      <div
-        className="absolute top-full mt-1.5 px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap transition-all duration-200 pointer-events-none"
-        style={{
-          background: 'rgba(26, 26, 46, 0.92)',
-          color: nodeColor,
-          border: '1px solid ' + nodeColor + '44',
-          opacity: isSelected ? 1 : 0,
-        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        {label.length > 22 ? label.slice(0, 20) + '...' : label}
-      </div>
-    </div>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-purple-600/30 flex items-center justify-center text-lg">
+            📄
+          </div>
+          <div>
+            <h3 className="text-white font-bold">{metadata?.title || node.data?.label || 'Untitled'}</h3>
+            <span className="text-[10px] text-purple-300">{typeLabels[metadata?.type] || '문서'}</span>
+          </div>
+        </div>
+
+        {metadata?.tags && metadata.tags.length > 0 && (
+          <div className="mb-3">
+            <span className="text-[10px] text-gray-400 mb-1 block">태그:</span>
+            <div className="flex flex-wrap gap-1">
+              {metadata.tags.map((tag, i) => (
+                <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-purple-500/30 text-purple-200">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {metadata?.createdAt && (
+          <div className="text-[10px] text-gray-400 mb-2">
+            생성일: {metadata.createdAt}
+          </div>
+        )}
+
+        {metadata?.url && (
+          <div className="text-[10px] text-blue-400 mb-2 break-all">
+            <a href={metadata.url} target="_blank" rel="noopener noreferrer">🔗 {metadata.url}</a>
+          </div>
+        )}
+
+        <div className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 whitespace-pre-wrap">
+          {knowledgeContent}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-4 px-4 py-1.5 rounded-lg bg-purple-600/30 text-white text-[11px] hover:bg-purple-600/50"
+        >
+          닫기
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }
 
-const nodeTypes: NodeTypes = { obsidianNode: ObsidianNode };
-
-export default function KnowledgeGraph({ nodes: initialNodes, edges: initialEdges, onNodeClick }: KnowledgeGraphProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onNodeClick }: KnowledgeGraphProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
-  // Find connected node IDs for highlight
-  const connectedNodeIds = useMemo(() => {
-    const activeId = hoveredNodeId || selectedNode?.id || null;
-    if (!activeId) return new Set<string>();
-    const connected = new Set<string>([activeId]);
-    edges.forEach(edge => {
-      if (edge.source === activeId) connected.add(edge.target);
-      if (edge.target === activeId) connected.add(edge.source);
-    });
-    return connected;
-  }, [hoveredNodeId, selectedNode, edges]);
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  useEffect(() => {
+    setNodes(generateCosmicPositions(propNodes));
+    setEdges(propEdges);
+  }, []);
 
   const onNodeClickHandler = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      setSelectedNode(prev => prev?.id === node.id ? null : node);
-      if (onNodeClick) onNodeClick(node);
+      if (selectedNode?.id === node.id) {
+        // Clicking on already selected node - show details
+        setSelectedNode(node);
+      } else {
+        // First click - select node (show title)
+        setSelectedNode(node);
+      }
     },
-    [onNodeClick]
+    [selectedNode]
   );
 
-  const onNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
-    setHoveredNodeId(node.id);
-  }, []);
-
-  const onNodeMouseLeave = useCallback(() => {
-    setHoveredNodeId(null);
-  }, []);
-
-  // Apply Obsidian-like styling to nodes
-  const styledNodes = useMemo(() => {
-    const activeId = hoveredNodeId || selectedNode?.id || null;
-    return nodes.map((node) => {
-      const isActive = connectedNodeIds.has(node.id);
-      const isHighlighted = node.id === activeId;
-      const connectionCount = node.data?.metadata?.tags?.length || 0;
-      const size = Math.max(8, Math.min(20, 6 + connectionCount * 2));
-
-      return {
-        ...node,
-        type: 'obsidianNode',
-        style: {
-          ...node.style,
-          background: 'transparent',
-          border: 'none',
-          boxShadow: 'none',
-          padding: 0,
-          width: size * 3 + 'px',
-          height: size * 3 + 'px',
-          opacity: activeId ? (isActive ? 1 : 0.15) : 0.85,
-          transition: 'opacity 0.3s ease',
-        },
-        data: {
-          ...node.data,
-          type: node.data?.type || 'default',
-          label: node.data?.label || '',
-          metadata: node.data?.metadata || {},
-          selected: isHighlighted,
-        } as GraphNodeData,
-      };
-    });
-  }, [nodes, connectedNodeIds, hoveredNodeId, selectedNode]);
-
-  const styledEdges = useMemo(() => {
-    const activeId = hoveredNodeId || selectedNode?.id || null;
-    return edges.map((edge) => {
-      const isConnected = activeId && (edge.source === activeId || edge.target === activeId);
-      return {
-        ...edge,
-        animated: !!isConnected,
-        style: {
-          ...edge.style,
-          stroke: isConnected ? OBSIDIAN_COLORS.edge.connected : OBSIDIAN_COLORS.edge.default,
-          strokeWidth: isConnected ? 1.5 : 0.6,
-          transition: 'all 0.3s ease',
-        },
-        markerEnd: activeId ? {
-          type: MarkerType.ArrowClosed,
-          color: isConnected ? OBSIDIAN_COLORS.edge.connected : OBSIDIAN_COLORS.edge.default,
-          width: isConnected ? 10 : 6,
-          height: isConnected ? 6 : 4,
-        } : undefined,
-      };
-    });
-  }, [edges, hoveredNodeId, selectedNode]);
-
-  const handlePaneClick = useCallback(() => {
-    setSelectedNode(null);
-  }, []);
-
   return (
-    <div className="relative w-full h-[500px] rounded-lg overflow-hidden"
-      style={{ background: OBSIDIAN_COLORS.bg }}
-    >
-      {/* Ambient glow */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 70%)',
-          zIndex: 0,
-        }}
-      />
-
+    <div className="relative w-full h-[500px] rounded-lg overflow-hidden bg-[#020010]">
       <ReactFlow
-        nodes={styledNodes}
-        edges={styledEdges}
+        nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
         onNodeClick={onNodeClickHandler}
-        onNodeMouseEnter={onNodeMouseEnter}
-        onNodeMouseLeave={onNodeMouseLeave}
-        onPaneClick={handlePaneClick}
-        nodeTypes={nodeTypes}
         fitView
         minZoom={0.3}
-        maxZoom={2.5}
-        className="bg-transparent"
+        maxZoom={3}
         defaultEdgeOptions={{
-          style: { stroke: OBSIDIAN_COLORS.edge.default, strokeWidth: 0.6 },
+          style: { stroke: 'rgba(139, 92, 246, 0.3)', strokeWidth: 1 },
           type: 'straight',
         }}
       >
         <Background
-          color="rgba(139, 92, 246, 0.06)"
-          gap={24}
+          color="rgba(139, 92, 246, 0.05)"
+          gap={30}
           size={1}
         />
-        <Controls
-          className="bg-[#1a1a2e] border-[#2d2d4a] rounded-lg shadow-lg shadow-black/30"
-          style={{
-            '--xy-controls-button-bg': '#2d2d4a',
-            '--xy-controls-button-hover-bg': '#3d3d5c',
-            '--xy-controls-button-color': '#a78bfa',
-          } as React.CSSProperties}
-        />
+        <Controls />
         <MiniMap
-          nodeColor={(node) => getNodeColor(node.data?.type || 'default')}
-          className="bg-[#1a1a2e] border-[#2d2d4a] rounded-lg shadow-lg"
-          style={{ filter: 'opacity(0.7)' } as React.CSSProperties}
-          maskColor="rgba(26, 26, 46, 0.8)"
+          style={{ backgroundColor: 'rgba(10, 5, 20, 0.8)' }}
         />
       </ReactFlow>
 
-      {/* Obsidian-style detail panel */}
+      {/* Selected node title displayed below graph */}
       {selectedNode && (
-        <div className="absolute bottom-4 left-4 z-50 max-w-xs"
-          style={{
-            background: 'rgba(26, 26, 46, 0.95)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(139, 92, 246, 0.15)',
-            borderRadius: '8px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-          }}
-        >
-          <div className="px-3 py-2.5 border-b border-purple-500/10">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full"
-                style={{
-                  background: getNodeColor(selectedNode.data?.type || 'default'),
-                  boxShadow: '0 0 6px ' + getNodeColor(selectedNode.data?.type || 'default') + '66',
-                }}
-              />
-              <span className="text-gray-200 text-sm font-medium">
-                {selectedNode.data?.metadata?.title || 'Untitled'}
-              </span>
-            </div>
-            <span className="text-[10px] text-gray-500 ml-4">
-              {selectedNode.data?.metadata?.type || 'document'}
+        <div className="absolute bottom-4 left-4 z-10">
+          <div 
+            className="px-3 py-1.5 rounded-lg bg-purple-600/30 border border-purple-500/40 cursor-pointer hover:bg-purple-600/50 transition-colors"
+            onClick={() => {
+              const metadata = selectedNode.data?.metadata as { title?: string } | undefined;
+              if (metadata?.title) {
+                setSelectedNode(selectedNode); // Trigger modal to show
+              }
+            }}
+          >
+            <span className="text-white text-sm font-medium">
+              {((selectedNode.data?.metadata as { title?: string })?.title) || (selectedNode.data?.label as string) || 'Untitled'}
             </span>
-          </div>
-          <div className="px-3 py-2 space-y-1">
-            {selectedNode.data?.metadata?.tags && selectedNode.data.metadata.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {selectedNode.data.metadata.tags.map((tag: string, i: number) => (
-                  <span key={i}
-                    className="text-[10px] px-1.5 py-0.5 rounded"
-                    style={{
-                      background: 'rgba(139, 92, 246, 0.1)',
-                      color: '#a78bfa',
-                      border: '1px solid rgba(139, 92, 246, 0.15)',
-                    }}
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            {selectedNode.data?.metadata?.createdAt && (
-              <div className="text-[10px] text-gray-500">
-                {new Date(selectedNode.data.metadata.createdAt).toLocaleDateString('ko-KR')}
-              </div>
-            )}
-            {selectedNode.data?.metadata?.url && (
-              <a href={selectedNode.data.metadata.url} target="_blank" rel="noopener noreferrer"
-                className="block text-[10px] text-blue-400 hover:text-blue-300 truncate"
-              >
-                {selectedNode.data.metadata.url}
-              </a>
-            )}
           </div>
         </div>
       )}
 
-      {/* Connection count badge */}
-      {selectedNode && (
-        <div className="absolute bottom-4 right-4 z-50 px-2 py-1 rounded text-[10px]"
-          style={{
-            background: 'rgba(26, 26, 46, 0.9)',
-            border: '1px solid rgba(139, 92, 246, 0.1)',
-            color: '#a78bfa',
-          }}
-        >
-          {edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id).length} connections
-        </div>
-      )}
+      {/* Full content modal - shown when clicking title */}
+      <AnimatePresence>
+        {selectedNode && selectedNode.data?.metadata ? (
+          <KnowledgeDetailModal
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

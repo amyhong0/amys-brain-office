@@ -1,12 +1,21 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+}
+
+// Knowledge content type for modal
+export interface KnowledgeContent {
+  title: string;
+  content: string;
+  tags?: string[];
+  createdAt?: string;
 }
 
 interface ChatInterfaceProps {
@@ -17,7 +26,95 @@ interface ChatInterfaceProps {
   progress?: number;
   currentTask?: string;
   error?: string;
+  onKnowledgeClick?: (knowledgeId: string) => void;
 }
+
+// Knowledge Detail Modal - shows full content when clicking links
+function KnowledgeDetailModal({ knowledge, onClose }: { knowledge: KnowledgeContent; onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="max-w-md w-full max-h-[80vh] overflow-y-auto rounded-xl p-5"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30, 15, 50, 0.95), rgba(20, 10, 40, 0.95))',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-purple-600/30 flex items-center justify-center text-lg">
+            📄
+          </div>
+          <div>
+            <h3 className="text-white font-bold">{knowledge.title}</h3>
+            <span className="text-[10px] text-purple-300">지식 문서</span>
+          </div>
+        </div>
+
+        {knowledge.tags && knowledge.tags.length > 0 && (
+          <div className="mb-3">
+            <span className="text-[10px] text-gray-400 mb-1 block">태그:</span>
+            <div className="flex flex-wrap gap-1">
+              {knowledge.tags.map((tag, i) => (
+                <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-purple-500/30 text-purple-200">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {knowledge.createdAt && (
+          <div className="text-[10px] text-gray-400 mb-2">
+            생성일: {knowledge.createdAt}
+          </div>
+        )}
+
+        <div className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 whitespace-pre-wrap">
+          {knowledge.content}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-4 px-4 py-1.5 rounded-lg bg-purple-600/30 text-white text-[11px] hover:bg-purple-600/50"
+        >
+          닫기
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Knowledge database for chat links
+const CHAT_KNOWLEDGE_DB: Record<string, KnowledgeContent> = {
+  nvidia: {
+    title: 'NVIDIA AI GPU 아키텍처 분석',
+    content: `**Blackwell GPU 아키텍처**\n\n• 성능: 이전 세대 대비 2.5x 향상\n• 메모리: HBM3E 사용, 대용량 데이터 처리\n• 연결: NVLink 4.0 인터커넥트 지원\n• 최적화: AI 추론 전용 Tensor Core\n\n**CUDA 플랫폼**\n\n• 병렬 컴퓨팅 프레임워크\n• PyTorch, TensorFlow와 통합\n• GPU 메모리 관리 최적화\n\n관련 태그: #NVIDIA #GPU #딥러닝`,
+    tags: ['NVIDIA', 'GPU', '딥러닝'],
+    createdAt: '2026-07-20'
+  },
+  mcp: {
+    title: 'MCP 프로토콜 기술 문서',
+    content: `**Model Context Protocol**\n\n• AI 에이전트와 외부 도구 연결 표준\n• JSON-RPC 2.0 기반 통신\n• 세 가지 프리미티브: 도구, 리소스, 프롬프트\n\n**적용 사례**\n\n• 파일 시스템 접근\n• 웹 검색 엔진 연동\n• 데이터베이스 쿼리\n\n관련 태그: #MCP #프로토콜 #AI`,
+    tags: ['MCP', '프로토콜', 'AI'],
+    createdAt: '2026-07-19'
+  },
+  ai: {
+    title: 'AI 시스템 설계 가이드',
+    content: `**멀티 에이전트 시스템**\n\n• Orchestrator Pattern\n• Task Distribution 전략\n• Memory Retrieval 메커니즘\n\n**최신 동향**\n\n• 대규모 언어 모델 최적화\n• RAG(Retrieval-Augmented Generation)\n• AI 안전성 및 윤리\n\n관련 태그: #AI #머신러닝 #딥러닝`,
+    tags: ['AI', '머신러닝', '딥러닝'],
+    createdAt: '2026-07-18'
+  },
+};
 
 export default function ChatInterface({
   messages,
@@ -29,11 +126,30 @@ export default function ChatInterface({
   error,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
+  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeContent | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Handle markdown link clicks in messages
+  const handleContentClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A' && target.textContent) {
+      const href = target.getAttribute('href') || '';
+      // Match /knowledge/{id} pattern
+      const match = href.match(/\/knowledge\/([^/]+)/);
+      if (match) {
+        e.preventDefault();
+        const knowledgeId = match[1];
+        const knowledge = CHAT_KNOWLEDGE_DB[knowledgeId];
+        if (knowledge) {
+          setSelectedKnowledge(knowledge);
+        }
+      }
+    }
+  }, []);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -69,16 +185,26 @@ export default function ChatInterface({
       <div className="flex-1 overflow-y-auto pr-1 space-y-3 pb-3">
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-              msg.role === 'user'
-                ? 'bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-br-sm'
-                : msg.role === 'system'
-                  ? 'bg-white/6 border border-white/10 text-gray-300 rounded-bl-sm'
-                  : 'bg-indigo-900/40 border border-indigo-500/20 text-indigo-100 rounded-bl-sm'
-            }`}>
-              <div className="whitespace-pre-wrap">{msg.content}</div>
-              <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-purple-200' : 'text-gray-500'} text-right`}>
-                {msg.timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+            <div
+              className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-br-sm'
+                  : msg.role === 'system'
+                    ? 'bg-white/6 border border-white/10 text-gray-300 rounded-bl-sm'
+                    : 'bg-indigo-900/40 border border-indigo-500/20 text-indigo-100 rounded-bl-sm'
+              }`}
+              onClick={handleContentClick}
+            >
+              <div
+                className="whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{
+                  __html: msg.content
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-300 hover:text-purple-200 underline cursor-pointer">$1</a>')
+                }}
+              />
+                <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-purple-200' : 'text-gray-500'} text-right`}>
+                  {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
               </div>
             </div>
           </div>
@@ -135,6 +261,16 @@ export default function ChatInterface({
           </button>
         </div>
       </div>
+
+      {/* Knowledge Detail Modal */}
+      <AnimatePresence>
+        {selectedKnowledge && (
+          <KnowledgeDetailModal
+            knowledge={selectedKnowledge}
+            onClose={() => setSelectedKnowledge(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
