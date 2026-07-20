@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 interface KnowledgeDoc {
   id: string;
@@ -22,9 +22,8 @@ const TYPE_CONFIG = {
   image: { icon: '🖼️', color: 'bg-orange-500/20 border-orange-500/40 text-orange-300', label: '이미지' },
 };
 
-// 데모용 샘플 데이터 (클라이언트에서만 날짜 처리)
-const SAMPLE_DOCS_RAW: Omit<KnowledgeDoc, 'createdAt'> & { date: string }[] = [
-  { id: '1', title: 'NVIDIA AI GPU 아키텍처', type: 'web', tags: ['AI', 'GPU', 'NVIDIA'], date: '2026-07-20', summary: 'Blackwell GPU 아키텍처 분석', content: `## NVIDIA AI GPU 아키텍처 분석
+const SAMPLE_DOCS: KnowledgeDoc[] = [
+  { id: '1', title: 'NVIDIA AI GPU 아키텍처', type: 'web', tags: ['AI', 'GPU', 'NVIDIA'], createdAt: '2026-07-20', summary: 'Blackwell GPU 아키텍처 분석', content: `## NVIDIA AI GPU 아키텍처 분석
 
 ### 개요
 NVIDIA Blackwell GPU는 AI 작업을 위한 차세대 아키텍처입니다.
@@ -36,13 +35,13 @@ NVIDIA Blackwell GPU는 AI 작업을 위한 차세대 아키텍처입니다.
 
 ### 적용 사례
 딥러닝 모델 훈련 및 추론에 활용됩니다.` },
-  { id: '2', title: 'MCP 프로토콜 기술 문서', type: 'pdf', tags: ['MCP', '프로토콜', 'AI'], date: '2026-07-19', summary: 'Model Context Protocol 공식 문서', content: `## Model Context Protocol
+  { id: '2', title: 'MCP 프로토콜 기술 문서', type: 'pdf', tags: ['MCP', '프로토콜', 'AI'], createdAt: '2026-07-19', summary: 'Model Context Protocol 공식 문서', content: `## Model Context Protocol
 
 ### 프로토콜 개요
 AI 에이전트와 외부 도구 연결 표준 프로토콜입니다.` },
-  { id: '3', title: 'Next.js 14 App Router 가이드', type: 'web', tags: ['Next.js', '프론트엔드'], date: '2026-07-18', summary: 'App Router 마이그레이션 가이드' },
-  { id: '4', title: '멀티 에이전트 시스템 설계', type: 'pdf', tags: ['AI', '에이전트', '아키텍처'], date: '2026-07-17', summary: '다중 AI 에이전트 오케스트레이션 패턴' },
-  { id: '5', title: 'React Flow 3D 시각화', type: 'web', tags: ['React', '시각화', '그래프'], date: '2026-07-16', summary: '지식 그래프 3D 렌더링 기법' },
+  { id: '3', title: 'Next.js 14 App Router 가이드', type: 'web', tags: ['Next.js', '프론트엔드'], createdAt: '2026-07-18', summary: 'App Router 마이그레이션 가이드' },
+  { id: '4', title: '멀티 에이전트 시스템 설계', type: 'pdf', tags: ['AI', '에이전트', '아키텍처'], createdAt: '2026-07-17', summary: '다중 AI 에이전트 오케스트레이션 패턴' },
+  { id: '5', title: 'React Flow 3D 시각화', type: 'web', tags: ['React', '시각화', '그래프'], createdAt: '2026-07-16', summary: '지식 그래프 3D 렌더링 기법' },
 ];
 
 function formatDate(isoString: string): string {
@@ -66,11 +65,7 @@ export default function KnowledgeHistory({ documents }: KnowledgeHistoryProps) {
   // 서버에서 받은 documents 또는 기본 데이터 사용
   const docs = useMemo(() => {
     if (documents) return documents;
-    // 기본 데이터는 클라이언트에서만 생성
-    return SAMPLE_DOCS_RAW.map(d => ({
-      ...d,
-      createdAt: d.date
-    }));
+    return SAMPLE_DOCS;
   }, [documents]);
 
   // 모든 태그 수집

@@ -18,11 +18,10 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 const BASE_AGENTS: AgentState[] = [
-  { id: 'orchestrator',        name: '대마법사',           role: '중앙 통제', emoji: '🧙‍♂️', status: 'idle', position: { x: 50, y: 10 }, floor: 5 },
-  { id: 'developer',           name: '백마법사',           role: '지식 분석', emoji: '🔮',  status: 'idle', position: { x: 50, y: 20 }, floor: 4 },
-  { id: 'knowledge-analyzer',  name: '연금술사',           role: '데이터 분석', emoji: '⚗️',  status: 'idle', position: { x: 50, y: 30 }, floor: 3 },
-  { id: 'document-processor',  name: '사서',               role: '문서 처리',  emoji: '📚',  status: 'idle', position: { x: 50, y: 40 }, floor: 2 },
-  { id: 'debugger',            name: '흑마법사',           role: '버그 치료',  emoji: '🦹',  status: 'idle', position: { x: 50, y: 80 }, floor: 0 },
+  { id: 'cauldron',  name: '마법 가마솥',  role: '중앙 통제',   emoji: '🧙‍♂️', status: 'idle', position: { x: 50, y: 10 }, floor: 5 },
+  { id: 'desk',      name: '마법사의 책상', role: '지식 분석',   emoji: '🔮',  status: 'idle', position: { x: 50, y: 20 }, floor: 4 },
+  { id: 'library',   name: '비전 도서관',   role: '데이터 분석', emoji: '⚗️',  status: 'idle', position: { x: 50, y: 30 }, floor: 3 },
+  { id: 'debug',     name: '흑마법 연구실', role: '버그 치료',   emoji: '🦹',  status: 'idle', position: { x: 50, y: 80 }, floor: 0 },
 ];
 
 // ── 간단한 키워드 기반 AI 응답 생성 ────────────────────────────────────────
@@ -109,11 +108,12 @@ export default function Home() {
     setError('');
 
     try {
-      // 오케스트레이터 → 지식 분석 에이전트 시뮬레이션
+      // 가마솥 → 도서관 에이전트 시뮬레이션
       await simulate([
-        ['🧙‍♂️ 오케스트레이터가 요청을 분석하고 있어요', 20, 'orchestrator'],
-        ['🔬 지식 분석 에이전트가 검색하고 있어요', 60, 'knowledge-analyzer'],
-        ['✅ 결과를 정리하고 있어요', 90, 'orchestrator'],
+        ['🧙‍♂️ 가마솥에서 요청을 분석하는 중...', 20, 'cauldron'],
+        ['🔮 책상에서 지식을 분석하는 중...', 50, 'desk'],
+        ['🔎 도서관에서 검색 주문을 외우는 중...', 75, 'library'],
+        ['✅ 결과를 정리하고 있어요', 90, 'cauldron'],
       ]);
 
       // AI 응답 생성
@@ -137,10 +137,10 @@ export default function Home() {
     addMessage({ id: `user-file-${Date.now()}`, role: 'user', content: `📄 파일 업로드: ${file.name}`, timestamp: new Date() });
     try {
       await simulate([
-        ['📄 파일을 업로드하고 있어요', 20, 'document-processor'],
-        ['📖 텍스트를 추출하고 있어요', 50, 'document-processor'],
-        ['🔬 지식을 분석하고 있어요', 80, 'knowledge-analyzer'],
-        ['✅ 완료!', 100, 'orchestrator'],
+        ['📄 파일을 업로드하는 중...', 20, 'desk'],
+        ['📖 텍스트를 추출하는 중...', 50, 'desk'],
+        ['🔬 지식을 분석하는 중...', 80, 'library'],
+        ['✅ 완료!', 100, 'cauldron'],
       ]);
       addMessage({
         id: `ai-file-${Date.now()}`,
@@ -159,10 +159,10 @@ export default function Home() {
     if (urlInputRef.current) urlInputRef.current.value = '';
     try {
       await simulate([
-        ['🌐 웹페이지를 스크래핑하고 있어요', 30, 'document-processor'],
-        ['📖 본문을 추출하고 있어요', 60, 'document-processor'],
-        ['🔬 지식을 분석하고 있어요', 85, 'knowledge-analyzer'],
-        ['✅ 완료!', 100, 'orchestrator'],
+        ['🌐 웹페이지를 스크래핑하는 중...', 30, 'desk'],
+        ['📖 본문을 추출하는 중...', 60, 'desk'],
+        ['🔬 지식을 분석하는 중...', 85, 'library'],
+        ['✅ 완료!', 100, 'cauldron'],
       ]);
       addMessage({
         id: `ai-url-${Date.now()}`,

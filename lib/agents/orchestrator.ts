@@ -3,7 +3,6 @@ import { AgentResponse, Task, AgentState, TaskType } from './types';
 
 export class OrchestratorAgent extends BaseAgent {
   private agents: Map<string, BaseAgent> = new Map();
-  private taskQueue: Task[] = [];
 
   constructor() {
     super('orchestrator', '오케스트레이터', '중앙 통제', '🧙‍♂️', 5);

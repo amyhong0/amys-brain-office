@@ -67,14 +67,14 @@ export default function ToolLogViewer() {
                     {JSON.stringify(call.arguments, null, 2)}
                   </pre>
                 </div>
-                {call.result && (
+                {call.result ? (
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground">Result:</p>
                     <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">
                       {JSON.stringify(call.result, null, 2)}
                     </pre>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
           </div>
