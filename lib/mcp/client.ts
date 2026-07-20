@@ -1,3 +1,6 @@
+declare module '@modelcontextprotocol/sdk/client/index.js';
+declare module '@modelcontextprotocol/sdk/client/stdio.js';
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
@@ -17,8 +20,8 @@ export class MCPClient {
   async connect(server: MCPServer): Promise<boolean> {
     try {
       const transport = new StdioClientTransport({
-        command: server.url.startsWith('stdio://') ? server.url.replace('stdio://', '') : 'node',
-        args: server.url.startsWith('stdio://') ? [] : [server.url]
+        command: server.url,
+        args: []
       });
 
       const client = new Client(
@@ -59,7 +62,7 @@ export class MCPClient {
     }
 
     try {
-      const result = await client.callTool({
+      const result = await (client as unknown as { callTool: (opts: { name: string; arguments: unknown }) => unknown }).callTool({
         name: toolName,
         arguments: args
       });

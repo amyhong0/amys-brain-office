@@ -285,7 +285,7 @@ export default function KnowledgeGraph({ nodes: initialNodes, edges: initialEdge
           <div className="px-3 py-2 space-y-1">
             {selectedNode.data?.metadata?.tags && selectedNode.data.metadata.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {selectedNode.data.metadata.tags.map((tag, i) => (
+                {selectedNode.data.metadata.tags.map((tag: string, i: number) => (
                   <span key={i}
                     className="text-[10px] px-1.5 py-0.5 rounded"
                     style={{
