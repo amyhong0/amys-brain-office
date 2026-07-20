@@ -162,19 +162,13 @@ export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onN
   useEffect(() => {
     setNodes(generateCosmicPositions(propNodes));
     setEdges(propEdges);
-  }, []);
+  }, [propNodes, propEdges, setNodes, setEdges]);
 
   const onNodeClickHandler = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      if (selectedNode?.id === node.id) {
-        // Clicking on already selected node - show details
-        setSelectedNode(node);
-      } else {
-        // First click - select node (show title)
-        setSelectedNode(node);
-      }
+      setSelectedNode(node);
     },
-    [selectedNode]
+    []
   );
 
   return (
