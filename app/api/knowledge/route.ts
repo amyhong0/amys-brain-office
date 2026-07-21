@@ -146,7 +146,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
             'Content-Type': 'application/json; charset=utf-8',
           },
           body: Buffer.from(JSON.stringify({
-            model: 'google/gemma-4-31b-it',
+            model: 'z-ai/glm-5-2',
             messages: [
               {
                 role: 'system',
