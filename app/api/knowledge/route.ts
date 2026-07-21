@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadKnowledgeDocs, saveKnowledgeDoc, deleteKnowledgeDoc, KnowledgeDoc } from '@/lib/utils/knowledge-storage';
-import * as cheerio from 'cheerio';
 
 // 텍스트 정제 함수 (LLM 없이도 사용)
 function cleanTextFallback(text: string): { title: string; content: string; keywords: string[] } {
@@ -137,7 +136,8 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
 
     const rawContent = $('body').text().trim();
 
-    if (rawContent.length > 200) {
+    // content가 부족해도 LLM으로 분석 시도
+    if (rawContent.length > 50) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -180,7 +180,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
               },
               {
                 role: 'user',
-                content: rawContent.substring(0, 8000)
+                content: `${rawTitle}\n\nURL: ${url}\n\n본문: ${rawContent || '(내용 없음 - 제목과 URL만으로 분석)'}`
               }
             ],
             temperature: 0.4,
@@ -223,19 +223,18 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
         return { title, content, keywords };
       } catch (llmError) {
         console.error('LLM processing error:', llmError);
-        const fallback = cleanTextFallback(rawContent);
         return {
-          title: fallback.title,
-          content: fallback.content,
-          keywords: fallback.keywords
+          title: rawTitle.trim(),
+          content: rawContent || `URL: ${url}\n\n콘텐츠 추출 실패 - 직접 방문하여 확인하세요.`,
+          keywords: extractKeywordsFromContent(rawTitle)
         };
       }
     }
 
     return {
       title: rawTitle.trim(),
-      content: `URL: ${url}\n\n콘텐츠 추출 실패 - 직접 방문하여 확인하세요.`,
-      keywords: []
+      content: `URL: ${url}\n\n본문이 너무 짧아 자동 요약할 수 없습니다. 직접 방문하여 확인하세요.`,
+      keywords: extractKeywordsFromContent(rawTitle)
     };
   } catch (error) {
     console.error('Failed to fetch web content:', error);
