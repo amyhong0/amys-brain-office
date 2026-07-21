@@ -342,7 +342,6 @@ export default function Home() {
                 const content = parsed.content || '';
                 if (content) {
                   fullReply += content;
-                  // messages 상태 직접 업데이트
                   setMessages(prev => {
                     const newMsgs = [...prev];
                     const idx = newMsgs.findIndex(m => m.id === aiMsgId);

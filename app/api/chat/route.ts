@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -8,15 +8,25 @@ export async function POST(request: NextRequest) {
     const { message, knowledgeDocs } = body;
 
     if (!message) {
-      return new Response(JSON.stringify({ error: 'Message is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    const knowledgeContext = (knowledgeDocs || []).slice(0, 10).map((doc: any, i: number) =>
+    const docs = (knowledgeDocs || []).slice(0, 10);
+    const knowledgeContext = docs.map((doc: any, i: number) =>
       `[문서 ${i + 1}]\n제목: ${doc.title}\n내용: ${doc.content || doc.summary || '(내용 없음)'}\n태그: ${(doc.tags || []).join(', ')}`
     ).join('\n\n');
+
+    const systemPrompt = docs.length > 0
+      ? `당신은 지식 베이스 기반 질의응답 AI입니다. 다음 지식 문서들만 참고하여 사용자 질문에 답변해주세요.
+
+참고할 지식 문서들:
+${knowledgeContext}
+
+규칙:
+- 위 문서 내용에 없는 정보는 "저장된 지식에 없는 내용입니다"라고 답변
+- 문서 내용을 참고할 때는 관련 문서 제목을 함께 표시
+- 답변은 간결하고 정확하게`
+      : `당신은 유용한 AI 어시스턴트입니다. 사용자의 질문에 친절하고 정확하게 답변해주세요.`;
 
     const llmResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
@@ -27,24 +37,10 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'nvidia/nemotron-mini-4b-instruct',
         messages: [
-          {
-            role: 'system',
-            content: `당신은 지식 베이스 기반 질의응답 AI입니다. 다음 지식 문서들만 참고하여 사용자 질문에 답변해주세요.
-
-참고할 지식 문서들:
-${knowledgeContext || '(저장된 지식이 없습니다.)'}
-
-규칙:
-- 위 문서 내용에 없는 정보는 "저장된 지식에 없는 내용입니다"라고 답변
-- 문서 내용을 참고할 때는 관련 문서 제목을 함께 표시
-- 답변은 간결하고 정확하게`
-          },
-          {
-            role: 'user',
-            content: message
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
         ],
-        temperature: 0.3,
+        temperature: 0.4,
         max_tokens: 1024,
         stream: true,
       }),
@@ -58,43 +54,48 @@ ${knowledgeContext || '(저장된 지식이 없습니다.)'}
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const reader = llmResponse.body?.getReader();
-        if (!reader) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'No response body' })}\n\n`));
-          controller.close();
-          return;
-        }
+        try {
+          const reader = llmResponse.body?.getReader();
+          if (!reader) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'No response body' })}\n\n`));
+            controller.close();
+            return;
+          }
 
-        const decoder = new TextDecoder();
-        let buffer = '';
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || '';
-                if (content) {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const content = parsed.choices?.[0]?.delta?.content || '';
+                  if (content) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                  }
+                } catch (e) {
+                  // skip malformed JSON
                 }
-              } catch (e) {
-                // skip malformed JSON
               }
             }
           }
+        } catch (e: any) {
+          console.error('Stream error:', e);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: e.message || 'Stream error' })}\n\n`));
+        } finally {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
         }
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
       },
     });
 
@@ -107,9 +108,9 @@ ${knowledgeContext || '(저장된 지식이 없습니다.)'}
     });
   } catch (error) {
     console.error('Chat API error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to get response' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json(
+      { reply: '', error: error instanceof Error ? error.message : 'Failed to get response' },
+      { status: 200 }
+    );
   }
 }
