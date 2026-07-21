@@ -282,11 +282,49 @@ export default function Home() {
     setError('');
     try {
       await simulate([
-        ['🧙‍♂️ 마법사들에게 지시 중...', 20, 'cauldron', '마법사들에게 지시 중...'],
-        ['🔮 마법 효과 분석 중...', 50, 'desk', '마법 효과 분석 중...'],
-        ['🔎 고대 서적 검색 중...', 75, 'library', '지식 발견! 마법 결계 완성...'],
-        ['✨ 마법 완성 중...', 90, 'cauldron', '주문 완성! 모든 마법사 해산'],
+        ['🧙‍♂️ 마법사들에게 지시 중...', 15, 'cauldron', '마법사들에게 지시 중...'],
+        ['🔮 지식 문서 검색 중...', 30, 'desk', '지식 데이터베이스 검색 중...'],
+        ['🔎 관련 문서 분석 중...', 55, 'library', '관련 문서 발견! 분석 시작...'],
+        ['📖 LLM이 답변 생성 중...', 80, 'desk', '답변 생성 중...'],
+        ['✨ 마법 완성 중...', 95, 'cauldron', '주문 완성!'],
       ]);
+
+      // 1. 지식 문서 로드
+      const res = await fetch('/api/knowledge');
+      const json = await res.json();
+      const docs = (json.documents || []) as KnowledgeDoc[];
+      
+      // 2. 문서 내용을 컨텍스트로 구성
+      const knowledgeContext = docs.slice(0, 10).map((doc, i) =>
+        `[문서 ${i + 1}]\n제목: ${doc.title}\n내용: ${doc.content || doc.summary || '(내용 없음)'}\n태그: ${(doc.tags || []).join(', ')}`
+      ).join('\n\n');
+
+      // 3. 서버 API로 LLM 답변 요청
+      const chatRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          knowledgeDocs: docs,
+        }),
+      });
+
+      let reply = '';
+      if (chatRes.ok) {
+        const data = await chatRes.json();
+        reply = data.reply || generateResponse(text);
+      } else {
+        reply = generateResponse(text);
+      }
+
+      addMessage({
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: reply,
+        timestamp: new Date(),
+      });
+    } catch (err) {
+      // LLM 실패 시 기존 fallback
       addMessage({
         id: `ai-${Date.now()}`,
         role: 'assistant',
@@ -299,7 +337,7 @@ export default function Home() {
       setCurrentTask('');
       setAgents(BASE_AGENTS);
     }
-  }, [addMessage, addSpellLog, agents]);
+  }, [addMessage, addSpellLog, agents, knowledgeDocs]);
 
   return (
     <div className="magic-bg min-h-screen">
