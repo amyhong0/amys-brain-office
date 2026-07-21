@@ -14,9 +14,6 @@ export async function POST(request: NextRequest) {
       `[문서 ${i + 1}]\n제목: ${doc.title}\n내용: ${doc.content || doc.summary || '(내용 없음)'}\n태그: ${(doc.tags || []).join(', ')}`
     ).join('\n\n');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
     const llmResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -46,9 +43,7 @@ ${knowledgeContext || '(저장된 지식이 없습니다.)'}
         temperature: 0.3,
         max_tokens: 1024,
       }),
-      signal: controller.signal,
     });
-    clearTimeout(timeoutId);
 
     if (!llmResponse.ok) {
       throw new Error(`LLM API error: ${llmResponse.status}`);
