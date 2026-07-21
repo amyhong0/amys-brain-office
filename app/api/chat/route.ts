@@ -108,9 +108,20 @@ ${knowledgeContext}
     });
   } catch (error) {
     console.error('Chat API error:', error);
-    return NextResponse.json(
-      { reply: '', error: error instanceof Error ? error.message : 'Failed to get response' },
-      { status: 200 }
-    );
+    const encoder = new TextEncoder();
+    const errorStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to get response' })}\n\n`));
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      }
+    });
+    return new Response(errorStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   }
 }
