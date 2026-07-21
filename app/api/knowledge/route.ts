@@ -143,9 +143,9 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=utf-8',
           },
-          body: JSON.stringify({
+          body: Buffer.from(JSON.stringify({
             model: 'google/gemma-4-31b-it',
             messages: [
               {
@@ -183,7 +183,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
             temperature: 1,
             top_p: 0.95,
             max_tokens: 8192,
-          }),
+          }), 'utf-8'),
         });
 
         if (!apiResponse.ok) {

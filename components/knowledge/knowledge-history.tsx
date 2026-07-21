@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Node, Edge } from 'reactflow';
 
 interface KnowledgeDoc {
   id: string;
@@ -47,7 +48,7 @@ function KnowledgeModal({ doc, onClose }: { doc: KnowledgeDoc; onClose: () => vo
       className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
         className="bg-slate-900 rounded-xl border border-purple-500/30 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}>
         <div className="p-5">
           <div className="flex items-start justify-between mb-4">
             <div>
@@ -164,6 +165,14 @@ export default function KnowledgeHistory({ documents, onChange }: KnowledgeHisto
     if (confirm('정말 삭제하시겠습니까?')) { await deleteKnowledgeDocAPI(docId); }
   };
 
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    docs.forEach(doc => {
+      doc.tags.forEach(tag => { counts[tag] = (counts[tag] || 0) + 1; });
+    });
+    return counts;
+  }, [docs]);
+
   return (
     <>
       <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-purple-500/20 overflow-hidden">
@@ -234,7 +243,7 @@ export default function KnowledgeHistory({ documents, onChange }: KnowledgeHisto
               <div className="flex flex-wrap gap-1 mb-3">
                 <button onClick={() => setSelectedTag(null)}
                   className={`px-2 py-0.5 rounded-full text-[10px] transition-all border ${!selectedTag ? 'bg-purple-600 border-purple-500 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-400'}`}>전체</button>
-                {allTags.map(([tag, count]) => (
+                {Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).map(([tag, count]) => (
                   <button key={tag} onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
                     className={`px-2 py-0.5 rounded-full text-[10px] transition-all border ${selectedTag === tag ? 'bg-purple-600 border-purple-500 text-white' : 'border-gray-600 text-gray-400 hover:border-gray-400'}`}>
                     {tag} <span className="opacity-60">{count}</span>
@@ -267,14 +276,14 @@ function DocItem({ doc, onSelect, onDelete }: { doc: KnowledgeDoc; onSelect: () 
           </div>
         </div>
         <span className="text-gray-500 text-[9px] whitespace-nowrap">{formatDate(doc.createdAt)}</span>
-        <span className="text-purple-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); onDelete(); }}>🗑️</span>
+        <span className="text-purple-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }}>🗑️</span>
       </div>
     </div>
   );
 }
 
 // 노드를 지식 그래프 형태로 변환하는 헬퍼 함수
-export function docsToGraph(docs: KnowledgeDoc[]): Node[] {
+export function docsToGraph(docs: KnowledgeDoc[]) {
   return docs.map((doc, idx) => ({
     id: doc.id,
     position: { x: (idx % 5) * 180 - 360, y: Math.floor(idx / 5) * 120 - 120 },
@@ -301,7 +310,7 @@ export function docsToGraph(docs: KnowledgeDoc[]): Node[] {
                  doc.type === 'image' ? '0 0 10px #fbbf2488' :
                  '0 0 10px #34d39988',
     },
-  }));
+  })) as Node[];
 }
 
 export function buildEdges(nodes: Node[]): Edge[] {

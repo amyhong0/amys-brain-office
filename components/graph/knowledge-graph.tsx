@@ -114,7 +114,7 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={onClose}
-      onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      onKeyDown={(e: React.KeyboardEvent) => e.key === 'Escape' && onClose()}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
@@ -125,13 +125,13 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
           background: 'linear-gradient(135deg, rgba(30, 15, 50, 0.95), rgba(20, 10, 40, 0.95))',
           border: '1px solid rgba(139, 92, 246, 0.3)',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-purple-600/30 flex items-center justify-center text-lg">📄</div>
           <div>
             <h3 className="text-white font-bold">{metadata?.title || node.data?.label || 'Untitled'}</h3>
-            <span className="text-[10px] text-purple-300">{typeLabels[metadata?.type] || '문서'}</span>
+            <span className="text-[10px] text-purple-300">{metadata?.type ? typeLabels[metadata.type] : '문서'}</span>
           </div>
         </div>
 
@@ -309,10 +309,8 @@ export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onN
           }}
         />
         <MiniMap
-          style={{ 
-            backgroundColor: 'rgba(10, 10, 15, 0.9)',
-            maskColor: 'rgba(0, 0, 0, 0.6)',
-          }}
+          style={{ backgroundColor: 'rgba(10, 10, 15, 0.9)' }}
+          maskColor="rgba(0, 0, 0, 0.6)"
           nodeColor={(node) => getNodeColor(node.data?.type as string)}
           nodeStrokeWidth={3}
         />

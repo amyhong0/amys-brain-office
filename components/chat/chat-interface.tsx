@@ -48,7 +48,7 @@ function KnowledgeDetailModal({ knowledge, onClose }: { knowledge: KnowledgeCont
           background: 'linear-gradient(135deg, rgba(30, 15, 50, 0.95), rgba(20, 10, 40, 0.95))',
           border: '1px solid rgba(139, 92, 246, 0.3)',
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-purple-600/30 flex items-center justify-center text-lg">

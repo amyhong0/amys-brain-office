@@ -5,7 +5,7 @@ import WizardTower from '@/components/agents/wizard-tower';
 import KnowledgeGraph from '@/components/graph/knowledge-graph';
 import ChatInterface, { Message } from '@/components/chat/chat-interface';
 import KnowledgeHistory from '@/components/knowledge/knowledge-history';
-import { AgentState, AGENT_COLORS } from '@/lib/agents/types';
+import { AgentState } from '@/lib/agents/types';
 import { Node, Edge } from 'reactflow';
 import { Upload, Link, LayoutDashboard, Share2, Archive } from 'lucide-react';
 

@@ -18,6 +18,7 @@ interface ZoneConfig {
   role: string;
   emoji: string;
   color: string;
+  image?: string;
   tasks: { label: string; icon: string }[];
 }
 
@@ -323,7 +324,7 @@ function AgentModal({
           background: `linear-gradient(135deg, ${zone.color}22, ${zone.color}11)`,
           border: `2px solid ${zone.color}66`,
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
           <img src={zone.image} alt={zone.name} className="w-16 h-16 object-contain" />
