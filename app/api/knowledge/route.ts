@@ -139,13 +139,16 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
 
     if (rawContent.length > 200) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
         const apiResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
             'Content-Type': 'application/json; charset=utf-8',
           },
-          body: Buffer.from(JSON.stringify({
+          body: JSON.stringify({
             model: 'google/gemma-4-31b-it',
             messages: [
               {
@@ -180,11 +183,13 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
                 content: rawContent.substring(0, 8000)
               }
             ],
-            temperature: 1,
-            top_p: 0.95,
-            max_tokens: 8192,
-          }), 'utf-8'),
+            temperature: 0.4,
+            top_p: 0.9,
+            max_tokens: 4096,
+          }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         if (!apiResponse.ok) {
           throw new Error(`API error: ${apiResponse.status}`);
