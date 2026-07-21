@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadKnowledgeDocs, saveKnowledgeDoc, deleteKnowledgeDoc, KnowledgeDoc } from '@/lib/utils/knowledge-storage';
+import * as cheerio from 'cheerio';
 
 // 텍스트 정제 함수 (LLM 없이도 사용)
 function cleanTextFallback(text: string): { title: string; content: string; keywords: string[] } {
