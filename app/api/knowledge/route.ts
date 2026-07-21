@@ -204,7 +204,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
 
         let keywords: string[] = [];
         if (keywordMatch) {
-          keywords = keywordMatch[1].split(',').map(k => k.trim()).filter(k => k.length > 0);
+          keywords = keywordMatch[1].split(',').map((k: string) => k.trim()).filter((k: string) => k.length > 0);
         }
         if (keywords.length === 0) keywords = extractKeywordsFromContent(content);
 
