@@ -3,11 +3,13 @@ import * as path from 'path';
 import * as os from 'os';
 import matter from 'gray-matter';
 
-// 기본 저장 경로: 사용자 문서 폴더/amys-brain-office-kb
+// 기본 저장 경로: Vercel 서버리스 환경에서는 /tmp 사용, 로컬에서는 Documents
 const getKbDir = (): string => {
+  if (process.env.KB_STORAGE_PATH) return process.env.KB_STORAGE_PATH;
+  if (process.env.VERCEL) return '/tmp/amys-brain-office-kb';
   const homeDir = os.homedir();
   const documentsDir = path.join(homeDir, 'Documents');
-  return process.env.KB_STORAGE_PATH || path.join(documentsDir, 'amys-brain-office-kb');
+  return path.join(documentsDir, 'amys-brain-office-kb');
 };
 
 export interface KnowledgeDoc {
