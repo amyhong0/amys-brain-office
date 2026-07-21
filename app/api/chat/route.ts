@@ -1,6 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-
-export const runtime = 'edge';
+import { NextRequest } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +6,10 @@ export async function POST(request: NextRequest) {
     const { message, knowledgeDocs } = body;
 
     if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'Message is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const docs = (knowledgeDocs || []).slice(0, 10);
@@ -47,7 +48,8 @@ ${knowledgeContext}
     });
 
     if (!llmResponse.ok) {
-      throw new Error(`LLM API error: ${llmResponse.status}`);
+      const errText = await llmResponse.text();
+      throw new Error(`LLM API error ${llmResponse.status}: ${errText}`);
     }
 
     // SSE 스트림 반환
