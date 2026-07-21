@@ -138,7 +138,8 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
     const rawContent = $('body').text().trim();
 
     // content가 부족해도 LLM으로 분석 시도
-    if (rawContent.length > 0) {
+    // 본문이 비어있어도 LLM이 제목+URL로 분석
+    {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -150,7 +151,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
             'Content-Type': 'application/json; charset=utf-8',
           },
           body: JSON.stringify({
-            model: 'qwen/qwen3-next-80b-a3b-instruct',
+            model: 'nvidia/nemotron-mini-4b-instruct',
             messages: [
               {
                 role: 'system',
