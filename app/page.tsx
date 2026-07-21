@@ -294,7 +294,12 @@ export default function Home() {
       const json = await res.json();
       const docs = (json.documents || []) as KnowledgeDoc[];
       
-      // 3. 서버 API로 LLM 답변 요청 (SSE 스트리밍)
+      // 3. 로딩 해제 (스트림 준비)
+      setIsLoading(false);
+      setProgress(0);
+      setCurrentTask('');
+
+      // 4. 서버 API로 LLM 답변 요청 (SSE 스트리밍)
       const chatRes = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -303,10 +308,6 @@ export default function Home() {
           knowledgeDocs: docs,
         }),
       });
-
-      if (!chatRes.ok) {
-        throw new Error('Chat API error');
-      }
 
       const aiMsgId = `ai-${Date.now()}`;
       
@@ -377,9 +378,6 @@ export default function Home() {
         timestamp: new Date(),
       });
     } finally {
-      setIsLoading(false);
-      setProgress(0);
-      setCurrentTask('');
       setAgents(BASE_AGENTS);
     }
   }, [addMessage, addSpellLog, agents, knowledgeDocs]);
