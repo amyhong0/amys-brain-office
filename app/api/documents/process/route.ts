@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pdf from 'pdf-parse';
 import * as cheerio from 'cheerio';
+import { parseWithLLM, parseWithFallback } from '@/lib/utils/llm-parser';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,8 @@ export async function POST(request: NextRequest) {
 
     let content = '';
     let title = '';
+    let tags: string[] = [];
+    let keywords: string[] = [];
 
     if (type === 'pdf') {
       // PDF 처리
@@ -33,11 +36,23 @@ export async function POST(request: NextRequest) {
 
       const response = await fetch(data.url);
       const html = await response.text();
-      const $ = cheerio.load(html);
 
-      // 본문 추출 (간단한 방식)
-      content = $('p').map((_, el) => $(el).text()).get().join('\n\n');
-      title = $('title').text() || data.url;
+      // LLM 파싱 시도
+      const llmResult = await parseWithLLM(html, data.url);
+      
+      if (llmResult) {
+        title = llmResult.title;
+        content = llmResult.content;
+        tags = llmResult.tags;
+        keywords = llmResult.keywords;
+      } else {
+        // Fallback 파싱
+        const fallbackResult = parseWithFallback(html, data.url);
+        title = fallbackResult.title;
+        content = fallbackResult.content;
+        tags = fallbackResult.tags;
+        keywords = fallbackResult.keywords;
+      }
     } else {
       return NextResponse.json(
         { error: 'Unsupported document type' },
@@ -49,7 +64,9 @@ export async function POST(request: NextRequest) {
       success: true,
       type,
       title,
-      content
+      content,
+      tags,
+      keywords
     });
   } catch (error) {
     console.error('Document processing error:', error);

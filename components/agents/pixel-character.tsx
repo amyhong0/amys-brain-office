@@ -7,8 +7,10 @@ import { AgentState } from '@/lib/agents/types';
 interface ZoneConfig {
   id: string;
   name: string;
+  title: string;
   emoji: string;
   color: string;
+  tasks: { label: string; icon: string }[];
 }
 
 interface PixelCharacterProps {

@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "MCP Host - AI Agent Platform",
-  description: "MCP-host tool based AI agent platform",
+  title: "Amy's Brain Office",
+  description: "개인 지식 관리 시스템",
 }
 
 export default function RootLayout({

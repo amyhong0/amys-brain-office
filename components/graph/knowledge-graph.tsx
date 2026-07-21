@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactFlow, {
   Node,
@@ -10,6 +10,7 @@ import ReactFlow, {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -29,35 +30,45 @@ function getNodeColor(type: string): string {
   return colors[type] || colors.default;
 }
 
-// Generate cosmic/star-like scattered positions
-function generateCosmicPositions(nodes: Node[]): Node[] {
-  // Create star field distribution - random but within view
+// Generate Obsidian-style scattered positions
+function generateObsidianPositions(nodes: Node[]): Node[] {
   return nodes.map((node, index) => {
     const type = (node.data?.type as string) || 'default';
     const tags = (node.data?.metadata as { tags?: string[] })?.tags || [];
     const tagCount = tags.length || 1;
-    const size = Math.max(8, Math.min(16, 6 + tagCount * 2));
+    const size = Math.max(14, Math.min(24, 12 + tagCount * 2));
     const color = getNodeColor(type);
 
-    // Scatter nodes in a cosmic pattern
+    // Force-directed style layout - scattered but organized
     const angle = (index * Math.PI * 2) / nodes.length;
-    const radius = 80 + Math.random() * 60;
-    const centerX = 200;
-    const centerY = 150;
+    const radius = 120 + Math.random() * 100;
+    const centerX = 250;
+    const centerY = 200;
     
-    const x = centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 30;
-    const y = centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 30;
+    const x = centerX + Math.cos(angle) * radius + (Math.random() - 0.5) * 60;
+    const y = centerY + Math.sin(angle) * radius + (Math.random() - 0.5) * 60;
 
     return {
       ...node,
       position: { x, y },
       style: {
-        width: size * 2,
-        height: size * 2,
-        background: `radial-gradient(circle, ${color}cc, ${color}88)`,
-        border: '1px solid rgba(255,255,255,0.2)',
+        width: size,
+        height: size,
+        background: `radial-gradient(circle, ${color}dd, ${color}99)`,
+        border: 'none',
         borderRadius: '50%',
-        boxShadow: `0 0 8px ${color}66`,
+        boxShadow: `0 0 15px ${color}66`,
+        color: '#fff',
+        fontSize: '9px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 500,
+        cursor: 'pointer',
+      },
+      data: {
+        ...node.data,
+        label: (node.data?.label as string)?.substring(0, 10) || 'Node',
       },
     };
   });
@@ -81,6 +92,17 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
     default: '문서',
   };
 
+  // ESC 키 처리
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
   // Simulated knowledge base content
   const knowledgeContent = metadata?.content || 
     `${metadata?.title || '지식'}에 대한 상세 내용입니다.\n\n이 지식은 ${metadata?.createdAt || '알 수 없는 시점'}에 수집되었습니다.\n태그: ${metadata?.tags?.join(', ') || '없음'}\n\n더 자세한 내용은 실제 문서를 참조해주세요.`;
@@ -92,6 +114,7 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={onClose}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
@@ -105,9 +128,7 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-purple-600/30 flex items-center justify-center text-lg">
-            📄
-          </div>
+          <div className="w-10 h-10 rounded-lg bg-purple-600/30 flex items-center justify-center text-lg">📄</div>
           <div>
             <h3 className="text-white font-bold">{metadata?.title || node.data?.label || 'Untitled'}</h3>
             <span className="text-[10px] text-purple-300">{typeLabels[metadata?.type] || '문서'}</span>
@@ -154,69 +175,155 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
   );
 }
 
+// 노드 hover 툴팁 컴포넌트
+function NodeTooltip({ node, position }: { node: Node | null; position: { x: number; y: number } | null }) {
+  if (!node || !position) return null;
+  
+  const metadata = node.data?.metadata as {
+    title?: string;
+    tags?: string[];
+    type?: string;
+    createdAt?: string;
+  } | undefined;
+
+  return (
+    <div 
+      className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+      style={{
+        left: position.x,
+        top: position.y - 10,
+      }}
+    >
+      <div className="px-3 py-2 rounded-lg bg-slate-900/95 border border-purple-500/50 text-white text-xs max-w-xs mb-2">
+        <div className="font-bold">{metadata?.title || node.data?.label || 'Untitled'}</div>
+        <div className="text-[10px] text-purple-300 mt-1">{metadata?.createdAt && `📅 ${metadata.createdAt}`}</div>
+        {metadata?.tags && metadata.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {metadata.tags.slice(0, 4).map(tag => (
+              <span key={tag} className="text-[9px] bg-purple-500/30 px-1 rounded">#{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onNodeClick }: KnowledgeGraphProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<Node | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 외부에서 전달받은 nodes에서 실제 지식 내용 찾기
+  const findKnowledgeContent = async (nodeId: string, docId: string) => {
+    try {
+      const response = await fetch(`/api/knowledge?id=${docId}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.documents?.find((d: { id: string }) => d.id === docId);
+      }
+    } catch (error) {
+      console.error('Failed to load knowledge content:', error);
+    }
+    return null;
+  };
 
   useEffect(() => {
-    setNodes(generateCosmicPositions(propNodes));
+    setNodes(generateObsidianPositions(propNodes));
     setEdges(propEdges);
   }, [propNodes, propEdges, setNodes, setEdges]);
 
   const onNodeClickHandler = useCallback(
-    (event: React.MouseEvent, node: Node) => {
+    async (event: React.MouseEvent, node: Node) => {
+      // 실제 지식 내용 가져오기
+      const metadata = node.data?.metadata as { id?: string } | undefined;
+      if (metadata?.id) {
+        const doc = await findKnowledgeContent(node.id, metadata.id);
+        if (doc) {
+          node.data = { ...node.data, metadata: { ...metadata, ...doc } };
+        }
+      }
       setSelectedNode(node);
+      onNodeClick?.(node);
     },
-    []
+    [onNodeClick]
   );
 
+  const onNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
+    setHoveredNode(node);
+    const target = event.target as HTMLElement;
+    const nodeElement = target.closest('.react-flow__node');
+    if (nodeElement && containerRef.current) {
+      const nodeRect = nodeElement.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      setTooltipPosition({
+        x: nodeRect.left - containerRect.left + nodeRect.width / 2,
+        y: nodeRect.top - containerRect.top
+      });
+    }
+  }, []);
+
+  const onNodeMouseLeave = useCallback(() => {
+    setHoveredNode(null);
+    setTooltipPosition(null);
+  }, []);
+
   return (
-    <div className="relative w-full h-[500px] rounded-lg overflow-hidden bg-[#020010]">
+    <div ref={containerRef} className="relative w-full h-[500px] rounded-lg overflow-hidden bg-[#0a0a0f]">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onNodeClick={onNodeClickHandler}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
         fitView
         minZoom={0.3}
         maxZoom={3}
         defaultEdgeOptions={{
-          style: { stroke: 'rgba(139, 92, 246, 0.3)', strokeWidth: 1 },
+          style: { 
+            stroke: 'rgba(139, 92, 246, 0.6)', 
+            strokeWidth: 2,
+          },
           type: 'straight',
         }}
+        connectionLineStyle={{
+          stroke: 'rgba(139, 92, 246, 0.4)',
+          strokeWidth: 2,
+        }}
+        snapToGrid
+        snapGrid={[15, 15]}
       >
         <Background
           color="rgba(139, 92, 246, 0.05)"
           gap={30}
-          size={1}
+          size={0.5}
         />
-        <Controls />
+        <Controls 
+          style={{ 
+            backgroundColor: 'rgba(10, 10, 15, 0.8)', 
+            border: '1px solid rgba(139, 92, 246, 0.3)' 
+          }}
+        />
         <MiniMap
-          style={{ backgroundColor: 'rgba(10, 5, 20, 0.8)' }}
+          style={{ 
+            backgroundColor: 'rgba(10, 10, 15, 0.9)',
+            maskColor: 'rgba(0, 0, 0, 0.6)',
+          }}
+          nodeColor={(node) => getNodeColor(node.data?.type as string)}
+          nodeStrokeWidth={3}
         />
       </ReactFlow>
 
-      {/* Selected node title displayed below graph */}
-      {selectedNode && (
-        <div className="absolute bottom-4 left-4 z-10">
-          <div 
-            className="px-3 py-1.5 rounded-lg bg-purple-600/30 border border-purple-500/40 cursor-pointer hover:bg-purple-600/50 transition-colors"
-            onClick={() => {
-              const metadata = selectedNode.data?.metadata as { title?: string } | undefined;
-              if (metadata?.title) {
-                setSelectedNode(selectedNode); // Trigger modal to show
-              }
-            }}
-          >
-            <span className="text-white text-sm font-medium">
-              {((selectedNode.data?.metadata as { title?: string })?.title) || (selectedNode.data?.label as string) || 'Untitled'}
-            </span>
-          </div>
-        </div>
+      {/* Hover 툴팁 - 노드 옆에 표시 */}
+      {hoveredNode && tooltipPosition && (
+        <NodeTooltip node={hoveredNode} position={tooltipPosition} />
       )}
 
-      {/* Full content modal - shown when clicking title */}
+      {/* Full content modal - shown when clicking node */}
       <AnimatePresence>
         {selectedNode && selectedNode.data?.metadata ? (
           <KnowledgeDetailModal

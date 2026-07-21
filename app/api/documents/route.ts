@@ -8,7 +8,7 @@ import { createMarkdownFile, MarkdownMetadata } from '@/lib/utils/markdown';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { type, content, title, url } = body;
+    const { type, content, title, url, tags, keywords } = body;
 
     if (!type || !content || !title) {
       return NextResponse.json(
@@ -26,15 +26,21 @@ export async function POST(request: NextRequest) {
       id: documentId,
       type,
       title,
-      tags: [],
+      tags: tags || [],
       createdAt: now,
       updatedAt: now,
       relatedDocs: []
     };
 
+    // 키워드를 본문에 추가
+    let finalContent = content;
+    if (keywords && keywords.length > 0) {
+      finalContent = `${content}\n\n## 핵심 키워드\n\n${keywords.map((k: string) => `- ${k}`).join('\n')}`;
+    }
+
     // MD 파일 생성
     const documentsDir = path.join(process.cwd(), 'knowledge', 'documents');
-    const mdPath = await createMarkdownFile(metadata, content, documentsDir);
+    const mdPath = await createMarkdownFile(metadata, finalContent, documentsDir);
 
     return NextResponse.json({
       success: true,
