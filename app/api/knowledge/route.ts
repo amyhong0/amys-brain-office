@@ -149,7 +149,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
             'Content-Type': 'application/json; charset=utf-8',
           },
           body: JSON.stringify({
-            model: 'google/gemma-4-31b-it',
+            model: 'qwen/qwen3-next-80b-a3b-instruct',
             messages: [
               {
                 role: 'system',
