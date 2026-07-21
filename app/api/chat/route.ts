@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   try {
@@ -6,10 +8,12 @@ export async function POST(request: NextRequest) {
     const { message, knowledgeDocs } = body;
 
     if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'Message is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // 문서 내용을 컨텍스트로 구성
     const knowledgeContext = (knowledgeDocs || []).slice(0, 10).map((doc: any, i: number) =>
       `[문서 ${i + 1}]\n제목: ${doc.title}\n내용: ${doc.content || doc.summary || '(내용 없음)'}\n태그: ${(doc.tags || []).join(', ')}`
     ).join('\n\n');
@@ -42,6 +46,7 @@ ${knowledgeContext || '(저장된 지식이 없습니다.)'}
         ],
         temperature: 0.3,
         max_tokens: 1024,
+        stream: true,
       }),
     });
 
@@ -49,15 +54,62 @@ ${knowledgeContext || '(저장된 지식이 없습니다.)'}
       throw new Error(`LLM API error: ${llmResponse.status}`);
     }
 
-    const data = await llmResponse.json();
-    const reply = data.choices?.[0]?.message?.content || '';
+    // SSE 스트림 반환
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = llmResponse.body?.getReader();
+        if (!reader) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'No response body' })}\n\n`));
+          controller.close();
+          return;
+        }
 
-    return NextResponse.json({ reply });
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content || '';
+                if (content) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                }
+              } catch (e) {
+                // skip malformed JSON
+              }
+            }
+          }
+        }
+
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error) {
     console.error('Chat API error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get response' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Failed to get response' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

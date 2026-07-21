@@ -294,12 +294,7 @@ export default function Home() {
       const json = await res.json();
       const docs = (json.documents || []) as KnowledgeDoc[];
       
-      // 2. 문서 내용을 컨텍스트로 구성
-      const knowledgeContext = docs.slice(0, 10).map((doc, i) =>
-        `[문서 ${i + 1}]\n제목: ${doc.title}\n내용: ${doc.content || doc.summary || '(내용 없음)'}\n태그: ${(doc.tags || []).join(', ')}`
-      ).join('\n\n');
-
-      // 3. 서버 API로 LLM 답변 요청
+      // 3. 서버 API로 LLM 답변 요청 (SSE 스트리밍)
       const chatRes = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -309,20 +304,71 @@ export default function Home() {
         }),
       });
 
-      let reply = '';
-      if (chatRes.ok) {
-        const data = await chatRes.json();
-        reply = data.reply || generateResponse(text);
-      } else {
-        reply = generateResponse(text);
+      if (!chatRes.ok) {
+        throw new Error('Chat API error');
       }
 
+      const aiMsgId = `ai-${Date.now()}`;
+      
+      // 빈 assistant 메시지 먼저 추가
       addMessage({
-        id: `ai-${Date.now()}`,
+        id: aiMsgId,
         role: 'assistant',
-        content: reply,
+        content: '',
         timestamp: new Date(),
       });
+
+      // SSE 스트리밍 읽기
+      const reader = chatRes.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullReply = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.content || '';
+                if (content) {
+                  fullReply += content;
+                  // messages 상태 직접 업데이트
+                  setMessages(prev => {
+                    const newMsgs = [...prev];
+                    const idx = newMsgs.findIndex(m => m.id === aiMsgId);
+                    if (idx >= 0) {
+                      newMsgs[idx] = { ...newMsgs[idx], content: fullReply };
+                    }
+                    return newMsgs;
+                  });
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+        // 최종 메시지가 비어있으면 fallback
+        if (!fullReply) {
+          setMessages(prev => {
+            const newMsgs = [...prev];
+            const idx = newMsgs.findIndex(m => m.id === aiMsgId);
+            if (idx >= 0) {
+              newMsgs[idx] = { ...newMsgs[idx], content: generateResponse(text) };
+            }
+            return newMsgs;
+          });
+        }
+      }
     } catch (err) {
       // LLM 실패 시 기존 fallback
       addMessage({
