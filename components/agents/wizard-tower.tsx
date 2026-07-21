@@ -124,54 +124,209 @@ function formatTime(d: Date): string {
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 }
 
-// ── Medieval Town Background Component ─────────────────────────────
-function MedievalTownBackground() {
+// ── Medieval Great Hall Background Component (Fantasy Illustration Style) ──
+function MedievalGreatHallBackground() {
   return (
-    <div className="absolute inset-0 pointer-events-none">
-      {/* Stone floor pattern */}
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Modern gothic background gradient */}
       <div className="w-full h-full" style={{
-        backgroundImage: `
-          linear-gradient(90deg, rgba(109, 40, 199, 0.12) 1px, transparent 1px),
-          linear-gradient(rgba(109, 40, 199, 0.12) 1px, transparent 1px)
+        background: `
+          linear-gradient(180deg, 
+            rgba(26, 26, 46, 0.95) 0%, 
+            rgba(22, 33, 62, 0.9) 50%, 
+            rgba(26, 26, 46, 0.95) 100%
+          ),
+          radial-gradient(ellipse at 50% 30%, rgba(60, 40, 80, 0.1) 0%, transparent 50%)
         `,
-        backgroundSize: '25px 25px',
       }} />
       
-      {/* Castle walls background */}
+      {/* Minimalist geometric stone pattern */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: `
+          repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 100px,
+            rgba(0, 0, 0, 0.05) 100px,
+            rgba(0, 0, 0, 0.05) 102px
+          ),
+          repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 80px,
+            rgba(0, 0, 0, 0.04) 80px,
+            rgba(0, 0, 0, 0.04) 82px
+          )
+        `,
+      }} />
+
+      {/* Modern vertical lines with gothic arch hints */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-6 h-full bg-gradient-to-r from-purple-900/15 to-transparent" />
-        <div className="absolute top-0 right-0 w-6 h-full bg-gradient-to-l from-blue-900/15 to-transparent" />
-        <div className="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-red-900/15 to-transparent" />
+        {/* Left modern pillar */}
+        <div className="absolute top-0 left-0 w-16 h-full">
+          <div className="w-full h-full" style={{
+            background: 'linear-gradient(90deg, rgba(30, 25, 45, 0.6), rgba(25, 20, 40, 0.4), transparent)',
+          }} />
+          <div className="absolute top-0 left-1 w-14 h-3/4" style={{
+            background: 'linear-gradient(180deg, rgba(40, 35, 55, 0.3), rgba(35, 30, 50, 0.2))',
+            clipPath: 'polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%)',
+            border: '1px solid rgba(80, 60, 100, 0.15)',
+          }} />
+        </div>
+        
+        {/* Right modern pillar */}
+        <div className="absolute top-0 right-0 w-16 h-full">
+          <div className="w-full h-full" style={{
+            background: 'linear-gradient(-90deg, rgba(30, 25, 45, 0.6), rgba(25, 20, 40, 0.4), transparent)',
+          }} />
+          <div className="absolute top-0 right-1 w-14 h-3/4" style={{
+            background: 'linear-gradient(180deg, rgba(40, 35, 55, 0.3), rgba(35, 30, 50, 0.2))',
+            clipPath: 'polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%)',
+            border: '1px solid rgba(80, 60, 100, 0.15)',
+          }} />
+        </div>
       </div>
 
-      {/* Medieval structures - background decorative elements */}
-      <div className="absolute bottom-10 left-20 w-12 h-12 bg-purple-800/20 border border-purple-500/30 rounded">
-        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-lg opacity-40">🏰</span>
+      {/* Modern arched windows with simplified stained glass */}
+      <div className="absolute top-4 left-20 w-20 h-36" style={{
+        background: 'linear-gradient(180deg, rgba(70, 50, 100, 0.25), rgba(50, 70, 110, 0.2), rgba(70, 50, 100, 0.25))',
+        borderRadius: '50% 50% 0 0',
+        border: '2px solid rgba(90, 70, 120, 0.3)',
+        boxShadow: 'inset 0 0 20px rgba(100, 80, 140, 0.2), 0 0 15px rgba(90, 70, 120, 0.15)',
+      }}>
+        <div className="absolute inset-2 flex flex-col justify-center items-center gap-1.5">
+          <div className="w-8 h-8 rounded-full" style={{ background: 'radial-gradient(circle, rgba(255, 200, 100, 0.3), rgba(255, 150, 50, 0.15))' }} />
+          <div className="w-6 h-6 rounded-full" style={{ background: 'radial-gradient(circle, rgba(100, 150, 255, 0.3), rgba(50, 100, 200, 0.15))' }} />
+          <div className="w-5 h-5 rounded-full" style={{ background: 'radial-gradient(circle, rgba(255, 100, 150, 0.3), rgba(200, 50, 100, 0.15))' }} />
+        </div>
       </div>
       
-      <div className="absolute bottom-10 right-20 w-10 h-10 bg-green-800/20 border border-green-500/30 rounded">
-        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-base opacity-40">📚</span>
+      <div className="absolute top-4 right-20 w-20 h-36" style={{
+        background: 'linear-gradient(180deg, rgba(70, 50, 100, 0.25), rgba(50, 70, 110, 0.2), rgba(70, 50, 100, 0.25))',
+        borderRadius: '50% 50% 0 0',
+        border: '2px solid rgba(90, 70, 120, 0.3)',
+        boxShadow: 'inset 0 0 20px rgba(100, 80, 140, 0.2), 0 0 15px rgba(90, 70, 120, 0.15)',
+      }}>
+        <div className="absolute inset-2 flex flex-col justify-center items-center gap-1.5">
+          <div className="w-8 h-8 rounded-full" style={{ background: 'radial-gradient(circle, rgba(100, 200, 150, 0.3), rgba(50, 150, 100, 0.15))' }} />
+          <div className="w-6 h-6 rounded-full" style={{ background: 'radial-gradient(circle, rgba(150, 100, 200, 0.3), rgba(100, 50, 150, 0.15))' }} />
+          <div className="w-5 h-5 rounded-full" style={{ background: 'radial-gradient(circle, rgba(255, 180, 100, 0.3), rgba(200, 130, 50, 0.15))' }} />
+        </div>
+      </div>
+
+      {/* Modern candles with neon glow */}
+      <div className="absolute bottom-16 left-1/4 transform -translate-x-1/2">
+        <div className="flex flex-col items-center">
+          {/* Flames with neon glow */}
+          <div className="flex gap-2.5 mb-1">
+            <div className="w-1.5 h-3.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at bottom, rgba(255, 200, 100, 0.85), rgba(255, 100, 50, 0.5), transparent)',
+              boxShadow: '0 0 8px rgba(255, 150, 50, 0.7), 0 0 16px rgba(147, 51, 234, 0.4), 0 0 24px rgba(147, 51, 234, 0.2)',
+              animation: 'flicker 0.5s ease-in-out infinite alternate',
+            }} />
+            <div className="w-1.5 h-4.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at bottom, rgba(255, 220, 120, 0.85), rgba(255, 120, 60, 0.5), transparent)',
+              boxShadow: '0 0 10px rgba(255, 160, 60, 0.7), 0 0 20px rgba(147, 51, 234, 0.4), 0 0 30px rgba(147, 51, 234, 0.2)',
+              animation: 'flicker 0.6s ease-in-out infinite alternate',
+            }} />
+            <div className="w-1.5 h-3.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at bottom, rgba(255, 200, 100, 0.85), rgba(255, 100, 50, 0.5), transparent)',
+              boxShadow: '0 0 8px rgba(255, 150, 50, 0.7), 0 0 16px rgba(147, 51, 234, 0.4), 0 0 24px rgba(147, 51, 234, 0.2)',
+              animation: 'flicker 0.55s ease-in-out infinite alternate',
+            }} />
+          </div>
+          {/* Modern candle holder */}
+          <div className="w-2.5 h-7" style={{ background: 'linear-gradient(90deg, rgba(50, 45, 65, 0.85), rgba(70, 65, 85, 0.75), rgba(50, 45, 65, 0.85))' }} />
+          <div className="w-5 h-2.5 rounded" style={{ background: 'linear-gradient(180deg, rgba(60, 55, 75, 0.85), rgba(45, 40, 55, 0.75))' }} />
+        </div>
       </div>
       
-      <div className="absolute top-16 left-16 w-8 h-8 bg-blue-800/20 border border-blue-500/30 rounded">
-        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm opacity-40">⚗️</span>
+      <div className="absolute bottom-16 right-1/4 transform translate-x-1/2">
+        <div className="flex flex-col items-center">
+          {/* Flames with neon glow */}
+          <div className="flex gap-2.5 mb-1">
+            <div className="w-1.5 h-3.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at bottom, rgba(255, 200, 100, 0.85), rgba(255, 100, 50, 0.5), transparent)',
+              boxShadow: '0 0 8px rgba(255, 150, 50, 0.7), 0 0 16px rgba(147, 51, 234, 0.4), 0 0 24px rgba(147, 51, 234, 0.2)',
+              animation: 'flicker 0.52s ease-in-out infinite alternate',
+            }} />
+            <div className="w-1.5 h-4.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at bottom, rgba(255, 220, 120, 0.85), rgba(255, 120, 60, 0.5), transparent)',
+              boxShadow: '0 0 10px rgba(255, 160, 60, 0.7), 0 0 20px rgba(147, 51, 234, 0.4), 0 0 30px rgba(147, 51, 234, 0.2)',
+              animation: 'flicker 0.58s ease-in-out infinite alternate',
+            }} />
+            <div className="w-1.5 h-3.5 rounded-full" style={{
+              background: 'radial-gradient(ellipse at bottom, rgba(255, 200, 100, 0.85), rgba(255, 100, 50, 0.5), transparent)',
+              boxShadow: '0 0 8px rgba(255, 150, 50, 0.7), 0 0 16px rgba(147, 51, 234, 0.4), 0 0 24px rgba(147, 51, 234, 0.2)',
+              animation: 'flicker 0.54s ease-in-out infinite alternate',
+            }} />
+          </div>
+          {/* Modern candle holder */}
+          <div className="w-2.5 h-7" style={{ background: 'linear-gradient(90deg, rgba(50, 45, 65, 0.85), rgba(70, 65, 85, 0.75), rgba(50, 45, 65, 0.85))' }} />
+          <div className="w-5 h-2.5 rounded" style={{ background: 'linear-gradient(180deg, rgba(60, 55, 75, 0.85), rgba(45, 40, 55, 0.75))' }} />
+        </div>
       </div>
+
+      {/* Simplified decorative elements - silhouettes */}
+      <div className="absolute bottom-28 left-10 w-10 h-6 rounded" style={{
+        background: 'linear-gradient(135deg, rgba(70, 40, 90, 0.4), rgba(55, 30, 75, 0.3))',
+        border: '1px solid rgba(100, 70, 120, 0.3)',
+        transform: 'rotate(-10deg)',
+        boxShadow: '0 3px 6px rgba(0, 0, 0, 0.25)',
+      }} />
       
-      <div className="absolute top-16 right-16 w-8 h-8 bg-red-800/20 border border-red-500/30 rounded">
-        <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm opacity-40">🦹</span>
-      </div>
+      <div className="absolute bottom-30 right-10 w-8 h-8 rounded" style={{
+        background: 'linear-gradient(135deg, rgba(35, 55, 90, 0.4), rgba(25, 45, 75, 0.3))',
+        border: '1px solid rgba(70, 90, 120, 0.3)',
+        transform: 'rotate(6deg)',
+        boxShadow: '0 3px 6px rgba(0, 0, 0, 0.25)',
+      }} />
+
+      {/* Uniform floating particles */}
+      {[...Array(10)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            width: '3px',
+            height: '3px',
+            left: `${10 + i * 9}%`,
+            top: `${20 + (i % 3) * 25}%`,
+            background: `radial-gradient(circle, rgba(140, 90, 200, 0.5), rgba(100, 50, 150, 0.3))`,
+            boxShadow: `0 0 6px rgba(140, 90, 200, 0.4)`,
+            animation: `float ${4 + Math.random() * 1.5}s ease-in-out infinite`,
+            animationDelay: `${i * 0.3}s`,
+          }}
+        />
+      ))}
+
+      {/* Straight light rays */}
+      <div className="absolute top-0 left-16 w-28 h-full" style={{
+        background: 'linear-gradient(180deg, rgba(90, 70, 130, 0.12), transparent 55%)',
+        transform: 'skewX(-8deg)',
+        pointerEvents: 'none',
+      }} />
+      <div className="absolute top-0 right-16 w-28 h-full" style={{
+        background: 'linear-gradient(180deg, rgba(90, 70, 130, 0.12), transparent 55%)',
+        transform: 'skewX(8deg)',
+        pointerEvents: 'none',
+      }} />
     </div>
   );
 }
 
-// ── Pixel Character Component (Stardew Valley Style) ─────────────
+// ── Fantasy Character Component (Illustration Style with Movement) ─────
 function PixelCharacter({
   x, y, zone, agent, onClick,
 }: {
   x: number; y: number; zone: ZoneConfig; agent: AgentState | undefined; onClick: () => void;
 }) {
   const isWorking = agent?.status === 'working';
-  const characterScale = isWorking ? 1.05 : 1;
+  const characterScale = isWorking ? 1.08 : 1;
+  
+  // Random movement when working
+  const movementRange = isWorking ? 12 : 4;
+  const movementDuration = isWorking ? 5 : 10;
 
   return (
     <motion.div
@@ -183,55 +338,74 @@ function PixelCharacter({
         zIndex: 10,
       }}
       onClick={onClick}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.12 }}
+      whileTap={{ scale: 0.92 }}
       animate={{ scale: characterScale }}
+      initial={{ x: 0, y: 0 }}
+      animate={{
+        x: [0, (Math.random() - 0.5) * movementRange, (Math.random() - 0.5) * movementRange, 0],
+        y: [0, (Math.random() - 0.5) * movementRange, (Math.random() - 0.5) * movementRange, 0],
+      }}
+      transition={{
+        duration: movementDuration,
+        repeat: Infinity,
+        repeatType: 'loop',
+        ease: 'easeInOut',
+      }}
     >
       {/* Character with shadow on floor */}
       <div className="relative">
-        {/* Ground shadow */}
-        <div className="absolute top-full left-1/2 w-5 h-1.5 bg-black/30 rounded-full transform -translate-x-1/2 translate-y-1" />
+        {/* Ground shadow - realistic */}
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 translate-y-1 w-8 h-2 rounded-full" style={{
+          background: 'radial-gradient(ellipse, rgba(0, 0, 0, 0.4), transparent)',
+        }} />
         
-        {/* Character body - pixel art style */}
+        {/* Character body - fantasy illustration style */}
         <motion.div
-          className="w-11 h-11 flex items-center justify-center text-xl"
+          className="w-14 h-14 flex items-center justify-center text-2xl"
           style={{
             background: isWorking 
-              ? `linear-gradient(135deg, ${zone.color}ee, ${zone.color}aa)`
-              : 'linear-gradient(135deg, #555555, #333333)',
+              ? `radial-gradient(circle at 30% 30%, ${zone.color}dd, ${zone.color}99 60%, ${zone.color}66)`
+              : 'radial-gradient(circle at 30% 30%, rgba(80, 70, 90, 0.9), rgba(50, 40, 60, 0.8) 60%, rgba(30, 20, 40, 0.7))',
             boxShadow: isWorking 
-              ? `0 0 15px ${zone.color}, 0 0 25px ${zone.color}88, inset 0 0 6px rgba(255,255,255,0.15)`
-              : '0 3px 8px rgba(0,0,0,0.4)',
-            border: '2px solid rgba(255,255,255,0.2)',
-            borderRadius: '6px',
+              ? `0 0 20px ${zone.color}88, 0 0 40px ${zone.color}44, inset 0 0 15px rgba(255,255,255,0.1)`
+              : '0 4px 12px rgba(0,0,0,0.5), inset 0 0 10px rgba(255,255,255,0.05)',
+            border: isWorking ? `2px solid ${zone.color}66` : '2px solid rgba(100, 80, 120, 0.3)',
+            borderRadius: '50%',
           }}
           animate={isWorking ? { 
-            y: [0, -2, 0],
+            y: [0, -3, 0],
           } : {}}
-          transition={{ duration: 1.5, repeat: Infinity }}
+          transition={{ duration: 2, repeat: Infinity }}
         >
-          <span className="drop-shadow-sm">{zone.emoji}</span>
+          <span className="drop-shadow-md" style={{ filter: isWorking ? 'brightness(1.2)' : 'brightness(0.9)' }}>{zone.emoji}</span>
           
-          {/* Particles when working */}
+          {/* Magical aura when working */}
           {isWorking && (
             <div className="absolute inset-0 pointer-events-none">
-              {[...Array(3)].map((_, i) => (
+              {[...Array(4)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="absolute w-1 h-1 rounded-full"
-                  style={{ backgroundColor: zone.color, opacity: 0.5 }}
+                  className="absolute rounded-full"
+                  style={{ 
+                    backgroundColor: zone.color, 
+                    opacity: 0.4,
+                    width: '4px',
+                    height: '4px',
+                  }}
                   initial={{ 
-                    x: 50 + Math.random() * 6 - 3, 
-                    y: 50 + Math.random() * 6 - 3,
+                    x: 50 + Math.random() * 8 - 4, 
+                    y: 50 + Math.random() * 8 - 4,
                   }}
                   animate={{
-                    y: [null, -15, -25],
-                    opacity: [0.5, 0.2, 0],
+                    y: [null, -20, -35],
+                    opacity: [0.4, 0.2, 0],
+                    scale: [1, 0.8, 0.5],
                   }}
                   transition={{ 
-                    duration: 0.8 + Math.random() * 0.4, 
+                    duration: 1 + Math.random() * 0.5, 
                     repeat: Infinity, 
-                    delay: i * 0.2 
+                    delay: i * 0.25 
                   }}
                 />
               ))}
@@ -239,18 +413,23 @@ function PixelCharacter({
           )}
         </motion.div>
 
-        {/* Speech bubble */}
+        {/* Speech bubble - elegant fantasy style */}
         {isWorking && agent?.currentTask && (
           <motion.div
-            className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-2.5 py-1.5 rounded bg-purple-900/95 text-white text-[10px] font-medium whitespace-nowrap max-w-[180px]"
+            className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-4 py-2.5 text-white text-[11px] font-medium whitespace-nowrap max-w-[220px]"
             style={{
-              background: 'linear-gradient(135deg, rgba(109, 40, 199, 0.95), rgba(76, 29, 146, 0.95))',
-              border: '1px solid rgba(139, 92, 246, 0.5)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+              background: 'linear-gradient(135deg, rgba(45, 25, 60, 0.95), rgba(30, 15, 45, 0.95))',
+              border: '2px solid rgba(120, 80, 150, 0.5)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.4), inset 0 0 15px rgba(150, 100, 180, 0.15)',
+              borderRadius: '8px',
+              position: 'relative',
             }}
-            initial={{ opacity: 0, y: 5 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
           >
+            {/* Elegant border decoration */}
+            <div className="absolute -left-1 top-0 w-1 h-full rounded-l" style={{ background: 'linear-gradient(180deg, rgba(150, 100, 180, 0.6), rgba(100, 60, 140, 0.4))' }} />
+            <div className="absolute -right-1 top-0 w-1 h-full rounded-r" style={{ background: 'linear-gradient(180deg, rgba(150, 100, 180, 0.6), rgba(100, 60, 140, 0.4))' }} />
             {agent.currentTask}
           </motion.div>
         )}
@@ -445,9 +624,9 @@ export default function WizardTower({ agents }: WizardTowerProps) {
         </div>
       </div>
 
-      {/* Medieval Town - characters roaming freely */}
-      <div className="relative bg-gradient-to-b from-[#1A0A2E] to-[#0A0518] overflow-hidden rounded-b-xl" style={{ minHeight: 300 }}>
-        <MedievalTownBackground />
+      {/* Medieval Great Hall - characters roaming freely */}
+      <div className="relative bg-gradient-to-b from-[#0D0820] via-[#1A0A2E] to-[#0A0518] overflow-hidden rounded-b-xl" style={{ minHeight: 350 }}>
+        <MedievalGreatHallBackground />
         
         {/* Characters freely roaming in the town */}
         {ZONES.map((zone) => (
