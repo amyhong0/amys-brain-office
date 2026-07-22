@@ -34,6 +34,7 @@ ${knowledgeContext}
       headers: {
         'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
         'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
       },
       body: JSON.stringify({
         model: 'nvidia/nemotron-mini-4b-instruct',
