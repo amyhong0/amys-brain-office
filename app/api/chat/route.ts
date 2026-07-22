@@ -29,22 +29,26 @@ ${knowledgeContext}
 - 답변은 간결하고 정확하게`
       : `당신은 유용한 AI 어시스턴트입니다. 사용자의 질문에 친절하고 정확하게 답변해주세요.`;
 
+    const requestBody = JSON.stringify({
+      model: 'nvidia/nemotron-mini-4b-instruct',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.4,
+      max_tokens: 1024,
+      stream: true,
+    });
+
+    console.log('Request body:', requestBody);
+
     const llmResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'nvidia/nemotron-mini-4b-instruct',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ],
-        temperature: 0.4,
-        max_tokens: 1024,
-        stream: false,
-      }),
+      body: requestBody,
     });
 
     if (!llmResponse.ok) {
@@ -56,18 +60,66 @@ ${knowledgeContext}
         body: errText,
         requestHeaders: {
           'Authorization': process.env.NVIDIA_API_KEY ? 'Bearer ***' : 'MISSING',
-          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Type': 'application/json',
         },
       });
       throw new Error(`LLM API error ${llmResponse.status}: ${errText}`);
     }
 
-    const data = await llmResponse.json();
-    const content = data.choices?.[0]?.message?.content || '';
+    // SSE 스트림 반환
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const reader = llmResponse.body?.getReader();
+          if (!reader) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'No response body' })}\n\n`));
+            controller.close();
+            return;
+          }
 
-    return new Response(JSON.stringify({ content }), {
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6).trim();
+                if (jsonStr === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const content = parsed.choices?.[0]?.delta?.content || '';
+                  if (content) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                  }
+                } catch (e) {
+                  console.error('Parse error:', e);
+                }
+              }
+            }
+          }
+        } catch (e: any) {
+          console.error('Stream error:', e);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: e.message || 'Stream error' })}\n\n`));
+        } finally {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     });
   } catch (error) {
