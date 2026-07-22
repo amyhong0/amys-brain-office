@@ -148,7 +148,7 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             model: 'nvidia/nemotron-mini-4b-instruct',
@@ -275,7 +275,8 @@ export async function POST(request: NextRequest) {
     if (url && (!content || content === url)) {
       const webData = await fetchWebContent(url);
       if (!title || title.includes('문서') || title === url) title = webData.title;
-      content = webData.content;
+      // LLM 처리 실패 시 fallback 정제 적용
+      content = webData.content || cleanTextFallback(url).content;
       if (webData.keywords && webData.keywords.length > 0) tags = webData.keywords;
       summary = content.substring(0, 100) + '...';
     }

@@ -292,7 +292,7 @@ export default function Home() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, knowledgeDocs }),
       });
 
       if (!response.ok) {
@@ -304,62 +304,37 @@ export default function Home() {
       setCurrentTask('');
 
       const aiMsgId = `ai-${Date.now()}`;
-      
+      const data = await response.json();
+      const replyContent = data.response || generateResponse(text);
+
+      // LLM이 인용한 문서 제목 찾기 - [참조: 제목] 형식
+      const citedTitles: string[] = [];
+      const citeRegex = /\[참조:\s*([^\]]+)\]/g;
+      let citeMatch;
+      while ((citeMatch = citeRegex.exec(replyContent)) !== null) {
+        citedTitles.push(citeMatch[1].trim());
+      }
+
+      // 인용된 문서들만 필터링, 인용이 없으면 모든 문서 반환
+      const allDocs = data.documents || [];
+      const matchedDocs = citedTitles.length > 0
+        ? allDocs.filter((doc: any) => citedTitles.some(t => doc.title.includes(t) || t.includes(doc.title)))
+        : allDocs;
+
       addMessage({
         id: aiMsgId,
         role: 'assistant',
-        content: '',
+        content: replyContent,
         timestamp: new Date(),
+        documents: matchedDocs.map((doc: any) => ({
+          id: doc.id,
+          title: doc.title,
+          content: doc.content,
+          tags: doc.tags || [],
+          createdAt: doc.createdAt,
+          url: doc.url,
+        })),
       });
-
-      const reader = response.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullReply = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.content || '';
-                if (content) {
-                  fullReply += content;
-                  setMessages(prev => {
-                    const newMsgs = [...prev];
-                    const idx = newMsgs.findIndex(m => m.id === aiMsgId);
-                    if (idx >= 0) {
-                      newMsgs[idx] = { ...newMsgs[idx], content: fullReply };
-                    }
-                    return newMsgs;
-                  });
-                }
-              } catch (e) {}
-            }
-          }
-        }
-
-        if (!fullReply) {
-          setMessages(prev => {
-            const newMsgs = [...prev];
-            const idx = newMsgs.findIndex(m => m.id === aiMsgId);
-            if (idx >= 0) {
-              newMsgs[idx] = { ...newMsgs[idx], content: generateResponse(text) };
-            }
-            return newMsgs;
-          });
-        }
-      }
     } catch (err) {
       addMessage({
         id: `err-${Date.now()}`,

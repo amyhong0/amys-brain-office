@@ -1,5 +1,9 @@
-import { put, list, get, del } from '@vercel/blob';
+import fs from 'fs/promises';
+import path from 'path';
 import matter from 'gray-matter';
+
+const USE_VERCEL_BLOB = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const KNOWLEDGE_DIR = path.join(process.cwd(), 'knowledge');
 
 export interface KnowledgeDoc {
   id: string;
@@ -12,29 +16,76 @@ export interface KnowledgeDoc {
   url?: string;
 }
 
-// 파일명 생성
+// 개발 환경용 로컬 저장소 초기화
+async function ensureLocalDir() {
+  try {
+    await fs.mkdir(KNOWLEDGE_DIR, { recursive: true });
+  } catch (error) {
+    console.error('Failed to initialize local knowledge dir:', error);
+  }
+}
+
 function getDocFileName(docId: string): string {
   return `${docId}.md`;
+}
+
+// Vercel Blob 사용 (배포 환경)
+async function withBlob<T>(fn: () => Promise<T>): Promise<T> {
+  if (!USE_VERCEL_BLOB) {
+    throw new Error('BLOB_READ_WRITE_TOKEN not configured');
+  }
+  const { put, list, del } = await import('@vercel/blob');
+  // @vercel/blob functions are passed via closure
+  return fn();
 }
 
 // 모든 문서 로드
 export async function loadKnowledgeDocs(): Promise<KnowledgeDoc[]> {
   try {
-    const { blobs } = await list({
-      prefix: 'knowledge/',
-      limit: 100,
-    });
+    if (USE_VERCEL_BLOB) {
+      const { list } = await import('@vercel/blob');
+      const { blobs } = await list({
+        prefix: 'knowledge/',
+        limit: 100,
+      });
 
+      const docs: KnowledgeDoc[] = [];
+      for (const blob of blobs) {
+        if (!blob.url.endsWith('.md')) continue;
+
+        const response = await fetch(blob.url);
+        const content = await response.text();
+        const { data } = matter(content);
+
+        docs.push({
+          id: data.id || blob.pathname.replace('knowledge/', '').replace('.md', ''),
+          title: data.title || 'Untitled',
+          type: data.type || 'web',
+          tags: data.tags || [],
+          createdAt: data.createdAt || new Date().toISOString(),
+          summary: data.summary,
+          content: content.replace(/^---[\s\S]*?---/, '').trim(),
+          url: data.url,
+        });
+      }
+
+      return docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    // 로컬 파일시스템 모드
+    await ensureLocalDir();
+    const files = await fs.readdir(KNOWLEDGE_DIR);
     const docs: KnowledgeDoc[] = [];
-    for (const blob of blobs) {
-      if (!blob.url.endsWith('.md')) continue;
-      
-      const response = await fetch(blob.url);
-      const content = await response.text();
+
+    for (const file of files) {
+      if (!file.endsWith('.md')) continue;
+
+      const filePath = path.join(KNOWLEDGE_DIR, file);
+      const content = await fs.readFile(filePath, 'utf-8');
       const { data } = matter(content);
-      
+
       docs.push({
-        id: data.id || blob.pathname.replace('knowledge/', '').replace('.md', ''),
+        id: data.id || file.replace('.md', ''),
         title: data.title || 'Untitled',
         type: data.type || 'web',
         tags: data.tags || [],
@@ -69,26 +120,49 @@ export async function saveKnowledgeDoc(doc: KnowledgeDoc): Promise<string> {
   const fileName = getDocFileName(doc.id);
   const pathname = `knowledge/${fileName}`;
 
-  const blob = await put(pathname, mdContent, {
-    access: 'public',
-    contentType: 'text/markdown',
-  });
+  if (USE_VERCEL_BLOB) {
+    const { put } = await import('@vercel/blob');
+    const blob = await put(pathname, mdContent, {
+      access: 'public',
+      contentType: 'text/markdown',
+    });
 
-  return blob.url;
+    return blob.url;
+  }
+
+  // 로컬 파일시스템 모드
+  await ensureLocalDir();
+  const filePath = path.join(KNOWLEDGE_DIR, fileName);
+  await fs.writeFile(filePath, mdContent, 'utf-8');
+  return `file://${filePath}`;
 }
 
 // 단일 문서 삭제
 export async function deleteKnowledgeDoc(docId: string): Promise<void> {
-  const pathname = `knowledge/${getDocFileName(docId)}`;
-  try {
-    const { blobs } = await list({
-      prefix: pathname,
-      limit: 1,
-    });
+  const fileName = getDocFileName(docId);
 
-    if (blobs.length > 0) {
-      await del(blobs[0].url);
+  if (USE_VERCEL_BLOB) {
+    try {
+      const { list, del } = await import('@vercel/blob');
+      const { blobs } = await list({
+        prefix: `knowledge/${fileName}`,
+        limit: 1,
+      });
+
+      if (blobs.length > 0) {
+        await del(blobs[0].url);
+      }
+    } catch (error) {
+      console.error(`Failed to delete doc ${docId}:`, error);
     }
+    return;
+  }
+
+  // 로컬 파일시스템 모드
+  try {
+    await ensureLocalDir();
+    const filePath = path.join(KNOWLEDGE_DIR, fileName);
+    await fs.unlink(filePath);
   } catch (error) {
     console.error(`Failed to delete doc ${docId}:`, error);
   }
