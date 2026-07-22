@@ -282,105 +282,45 @@ export default function Home() {
     setError('');
     try {
       await simulate([
-        ['🧙‍♂️ 마법사들에게 지시 중...', 15, 'cauldron', '마법사들에게 지시 중...'],
-        ['🔮 지식 문서 검색 중...', 30, 'desk', '지식 데이터베이스 검색 중...'],
-        ['🔎 관련 문서 분석 중...', 55, 'library', '관련 문서 발견! 분석 시작...'],
-        ['📖 LLM이 답변 생성 중...', 80, 'desk', '답변 생성 중...'],
-        ['✨ 마법 완성 중...', 95, 'cauldron', '주문 완성!'],
+        ['🧙‍♂️ 마법사들에게 지시 중...', 20, 'cauldron', '마법사들에게 지시 중...'],
+        ['🔮 마법 효과 분석 중...', 50, 'desk', '마법 효과 분석 중...'],
+        ['🔎 고대 서적 검색 중...', 75, 'library', '지식 발견! 마법 결계 완성...'],
+        ['✨ 마법 완성 중...', 90, 'cauldron', '주문 완성! 모든 마법사 해산'],
       ]);
-
-      // 1. 지식 문서 로드
-      const res = await fetch('/api/knowledge');
-      const json = await res.json();
-      const docs = (json.documents || []) as KnowledgeDoc[];
       
-      // 3. 로딩 해제 (스트림 준비)
-      setIsLoading(false);
-      setProgress(0);
-      setCurrentTask('');
-
-      // 4. 서버 API로 LLM 답변 요청 (SSE 스트리밍)
-      const chatRes = await fetch('/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: text,
-          knowledgeDocs: docs,
-        }),
+        body: JSON.stringify({ message: text }),
       });
-
-      const aiMsgId = `ai-${Date.now()}`;
       
-      // 빈 assistant 메시지 먼저 추가
-      addMessage({
-        id: aiMsgId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-      });
-
-      // SSE 스트리밍 읽기
-      const reader = chatRes.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullReply = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.content || '';
-                if (content) {
-                  fullReply += content;
-                  setMessages(prev => {
-                    const newMsgs = [...prev];
-                    const idx = newMsgs.findIndex(m => m.id === aiMsgId);
-                    if (idx >= 0) {
-                      newMsgs[idx] = { ...newMsgs[idx], content: fullReply };
-                    }
-                    return newMsgs;
-                  });
-                }
-              } catch (e) {}
-            }
-          }
-        }
-
-        // 최종 메시지가 비어있으면 fallback
-        if (!fullReply) {
-          setMessages(prev => {
-            const newMsgs = [...prev];
-            const idx = newMsgs.findIndex(m => m.id === aiMsgId);
-            if (idx >= 0) {
-              newMsgs[idx] = { ...newMsgs[idx], content: generateResponse(text) };
-            }
-            return newMsgs;
-          });
-        }
+      if (!response.ok) {
+        throw new Error('AI 응답을 가져오는데 실패했습니다');
       }
-    } catch (err) {
-      // LLM 실패 시 기존 fallback
+      
+      const data = await response.json();
+      
       addMessage({
         id: `ai-${Date.now()}`,
         role: 'assistant',
-        content: generateResponse(text),
+        content: data.response,
+        timestamp: new Date(),
+        documents: data.documents,
+      });
+    } catch (err) {
+      addMessage({
+        id: `err-${Date.now()}`,
+        role: 'system',
+        content: `⚠️ 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`,
         timestamp: new Date(),
       });
     } finally {
+      setIsLoading(false);
+      setProgress(0);
+      setCurrentTask('');
       setAgents(BASE_AGENTS);
     }
-  }, [addMessage, addSpellLog, agents, knowledgeDocs]);
+  }, [addMessage, addSpellLog, agents]);
 
   return (
     <div className="magic-bg min-h-screen">

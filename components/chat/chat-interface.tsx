@@ -8,6 +8,14 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  documents?: Array<{
+    id: string;
+    title: string;
+    content: string;
+    tags: string[];
+    createdAt: string;
+    url?: string;
+  }>;
 }
 
 // Knowledge content type for modal
@@ -203,6 +211,25 @@ export default function ChatInterface({
                     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-300 hover:text-purple-200 underline cursor-pointer">$1</a>')
                 }}
               />
+              {msg.documents && msg.documents.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="text-[10px] text-purple-300 mb-2">📄 관련 문서:</div>
+                  {msg.documents.map((doc, idx) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => setSelectedKnowledge({
+                        title: doc.title,
+                        content: doc.content,
+                        tags: doc.tags,
+                        createdAt: doc.createdAt
+                      })}
+                      className="block w-full text-left px-2 py-1.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-[11px] text-purple-200 transition-all mb-1 last:mb-0"
+                    >
+                      {doc.title}
+                    </button>
+                  ))}
+                </div>
+              )}
                 <div className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-purple-200' : 'text-gray-500'} text-right`}>
                   {msg.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
               </div>
