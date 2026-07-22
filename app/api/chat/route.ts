@@ -33,8 +33,7 @@ ${knowledgeContext}
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+        'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify({
         model: 'nvidia/nemotron-mini-4b-instruct',
@@ -44,69 +43,31 @@ ${knowledgeContext}
         ],
         temperature: 0.4,
         max_tokens: 1024,
-        stream: true,
+        stream: false,
       }),
     });
 
     if (!llmResponse.ok) {
       const errText = await llmResponse.text();
+      console.error('LLM API Error Details:', {
+        status: llmResponse.status,
+        statusText: llmResponse.statusText,
+        headers: Object.fromEntries(llmResponse.headers.entries()),
+        body: errText,
+        requestHeaders: {
+          'Authorization': process.env.NVIDIA_API_KEY ? 'Bearer ***' : 'MISSING',
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+      });
       throw new Error(`LLM API error ${llmResponse.status}: ${errText}`);
     }
 
-    // SSE 스트림 반환
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          const reader = llmResponse.body?.getReader();
-          if (!reader) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'No response body' })}\n\n`));
-            controller.close();
-            return;
-          }
+    const data = await llmResponse.json();
+    const content = data.choices?.[0]?.message?.content || '';
 
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const jsonStr = line.slice(6).trim();
-                if (jsonStr === '[DONE]') continue;
-                try {
-                  const parsed = JSON.parse(jsonStr);
-                  const content = parsed.choices?.[0]?.delta?.content || '';
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                  }
-                } catch (e) {
-                  // skip malformed JSON
-                }
-              }
-            }
-          }
-        } catch (e: any) {
-          console.error('Stream error:', e);
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: e.message || 'Stream error' })}\n\n`));
-        } finally {
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
+    return new Response(JSON.stringify({ content }), {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        'Content-Type': 'application/json',
       },
     });
   } catch (error) {

@@ -303,9 +303,8 @@ export default function Home() {
       addMessage({
         id: `ai-${Date.now()}`,
         role: 'assistant',
-        content: data.response,
+        content: data.content,
         timestamp: new Date(),
-        documents: data.documents,
       });
     } catch (err) {
       addMessage({
