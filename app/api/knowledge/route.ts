@@ -26,37 +26,9 @@ function cleanTextFallback(text: string): { title: string; content: string; keyw
 
   const content = cleaned;
   const allText = cleaned;
-  const keywordPatterns = [
-    /BGF리테일/g, /CU/g, /GS25/g, /이마트/g, /홈플러스/g,
-    /카페/g, /베이커리/g, /평양냉면/g, /밀프렌즈/g,
-    /상품기획/g, /전략/g, /협업/g, /지자체/g,
-    /프랜차이즈/g, /창업/g, /수익/g
-  ];
 
-  const keywords: string[] = [];
-  const seen = new Set<string>();
-
-  for (const pattern of keywordPatterns) {
-    const matches = allText.match(pattern);
-    if (matches) {
-      for (const match of matches) {
-        if (!seen.has(match)) {
-          seen.add(match);
-          keywords.push(match);
-        }
-      }
-    }
-  }
-
-  const defaultKeywords = ['BGF리테일', 'CU', '카페', '베이커리', '협업'];
-  let idx = 0;
-  while (keywords.length < 5 && idx < defaultKeywords.length) {
-    if (!seen.has(defaultKeywords[idx])) {
-      keywords.push(defaultKeywords[idx]);
-      seen.add(defaultKeywords[idx]);
-    }
-    idx++;
-  }
+  // 하드코딩된 키워드 제거 - 실제 텍스트에서 빈도 기반으로만 추출
+  const keywords = extractKeywordsFromContent(allText);
 
   return {
     title: lines[0]?.substring(0, 50) || '웹 문서',
