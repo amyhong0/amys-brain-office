@@ -101,18 +101,18 @@ export default function Home() {
     const nodes = filtered.map((doc, idx) => ({
       id: doc.id,
       position: { x: (idx % 5) * 180 - 360, y: Math.floor(idx / 5) * 120 - 120 },
-      data: {
-        label: doc.title || 'Untitled',
-        type: doc.type,
-        metadata: { 
-          title: doc.title, 
-          entityType: (doc as any).metadata?.topic || doc.type, 
-          topic: (doc as any).metadata?.topic, 
-          tags: doc.tags, 
-          createdAt: doc.createdAt, 
-          url: doc.url 
-        },
-      },
+          data: {
+            label: doc.title || 'Untitled',
+            type: doc.type,
+            metadata: { 
+              title: doc.title, 
+              entityType: (doc as any).metadata?.topic, 
+              topic: (doc as any).metadata?.topic || doc.type, 
+              tags: doc.tags, 
+              createdAt: doc.createdAt, 
+              url: doc.url 
+            },
+          },
       style: {
         width: 10,
         height: 10,
@@ -496,19 +496,6 @@ export default function Home() {
                 }}
               />
               
-              {selectedGraphNode && !showFullGraphContent && (
-                <div className="absolute bottom-4 left-4 z-10">
-                  <div 
-                    className="px-4 py-2 rounded-lg bg-purple-900/60 border border-purple-500/50 cursor-pointer hover:bg-purple-800/70 transition-all backdrop-blur-sm"
-                    onClick={() => setShowFullGraphContent(true)}
-                  >
-                    <span className="text-white text-sm font-medium">
-                      {((selectedGraphNode.data?.metadata as { title?: string })?.title) || (selectedGraphNode.data?.label as string) || 'Untitled'}
-                    </span>
-                    <span className="text-purple-300 text-xs ml-2">(클릭하여 전체 내용 보기)</span>
-                  </div>
-                </div>
-              )}
               
               {selectedGraphNode && showFullGraphContent && (
                 <div 
@@ -560,9 +547,21 @@ export default function Home() {
                       </div>
                     )}
                     
-                    <div className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 whitespace-pre-wrap">
-                      {((selectedGraphNode.data?.metadata as { title?: string })?.title) || '지식'}에 대한 상세 내용입니다.
-                    </div>
+                        <div className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 whitespace-pre-wrap">
+                          {(() => {
+                            const raw = (selectedGraphNode.data?.metadata as any)?.content;
+                            if (typeof raw === 'string') {
+                              const snippet = raw.length > 1200 ? raw.slice(0, 1200) + '\n\n...' : raw;
+                              return (
+                                <>
+                                  <div className="text-[10px] text-gray-400 mb-1">본문 미리보기</div>
+                                  <div className="whitespace-pre-wrap text-gray-300">{snippet}</div>
+                                </>
+                              );
+                            }
+                            return ((selectedGraphNode.data?.metadata as { title?: string })?.title) || '지식';
+                          })()}
+                        </div>
                     
                     <button onClick={() => {
                       setShowFullGraphContent(false);
