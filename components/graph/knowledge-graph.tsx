@@ -46,18 +46,18 @@ function EntityNode({ data, selected }: NodeProps) {
   const name = ((data?.metadata as { name?: string })?.name || data?.label || '') + '';
   const entityType = ((data?.metadata as { entityType?: string })?.entityType || data?.type || 'default') + '';
   const color = resolveColor(entityType, name, 0);
-  const short = name.length > 6 ? name.slice(0, 6) + '…' : name;
+  const short = name.length > 3 ? name.slice(0, 3) + '…' : name;
 
   return (
-    <div className="relative flex items-center justify-center">
+    <div className="relative flex items-center justify-center group">
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
 
       <motion.div
         className="relative rounded-full flex items-center justify-center"
         style={{
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           background: `radial-gradient(circle at 35% 35%, ${color}33, ${color}11)`,
           border: `1.5px solid ${color}88`,
           boxShadow: selected
@@ -65,8 +65,9 @@ function EntityNode({ data, selected }: NodeProps) {
             : `0 0 10px ${color}22`,
           cursor: 'pointer',
         }}
-        animate={selected ? { scale: [1, 1.08, 1] } : {}}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        animate={selected ? { scale: [1, 1.06, 1] } : {}}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+        title={name}
       >
         <div
           className="rounded-full"
@@ -80,12 +81,12 @@ function EntityNode({ data, selected }: NodeProps) {
       </motion.div>
 
       <div
-        className="absolute whitespace-nowrap text-[8px] font-semibold tracking-wide pointer-events-none"
+        className="absolute whitespace-nowrap text-[8px] font-semibold tracking-wide pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
         style={{
-          top: 'calc(100% + 3px)',
+          top: 'calc(100% + 2px)',
           left: '50%',
           transform: 'translateX(-50%)',
-          color: selected ? '#f1f5f9' : '#cbd5e1',
+          color: '#e2e8f0',
           textShadow: '0 0 6px rgba(0,0,0,0.95)',
         }}
       >
@@ -96,7 +97,7 @@ function EntityNode({ data, selected }: NodeProps) {
       <div
         className="absolute -top-1 -right-1 rounded-full border border-white/10"
         style={{
-          background: 'rgba(0,0,0,0.75)',
+          background: 'rgba(0,0,0,0.8)',
           color: '#e2e8f0',
           fontSize: 7,
           padding: '1px 5px',
