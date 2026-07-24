@@ -22,7 +22,6 @@ interface KnowledgeGraphProps {
   onNodeClick?: (node: Node) => void;
 }
 
-// Topic/Entity-based palette
 const PALETTE = ['#f87171', '#60a5fa', '#a78bfa', '#fb923c', '#34d399', '#facc15', '#f472b6', '#22d3ee'];
 
 function topicHash(value: string): number {
@@ -43,15 +42,29 @@ function resolveColor(type?: string, title = '', index = 0): string {
 
 // ── Entity Node ───────────────────────────────────────────────────
 function EntityNode({ data, selected }: NodeProps) {
+  const topic = ((data?.metadata as any)?.topic || data?.type || 'default') + '';
   const name = ((data?.metadata as { name?: string })?.name || data?.label || '') + '';
-  const entityType = ((data?.metadata as { entityType?: string })?.entityType || data?.type || 'default') + '';
-  const color = resolveColor(entityType, name, 0);
-  const short = name.length > 3 ? name.slice(0, 3) + '…' : name;
+  const color = resolveColor(topic, name, 0);
+  const label = topic.length > 6 ? topic.slice(0, 6) + '…' : topic;
 
   return (
-    <div className="relative flex items-center justify-center group">
+    <div className="relative flex items-center justify-center">
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+
+      {/* 노드 위에 가로 라벨 */}
+      <div
+        className="absolute whitespace-nowrap text-[8px] font-semibold tracking-wide pointer-events-none"
+        style={{
+          bottom: 'calc(100% + 3px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: selected ? '#f1f5f9' : '#cbd5e1',
+          textShadow: '0 0 6px rgba(0,0,0,0.95)',
+        }}
+      >
+        {label}
+      </div>
 
       <motion.div
         className="relative rounded-full flex items-center justify-center"
@@ -60,6 +73,7 @@ function EntityNode({ data, selected }: NodeProps) {
           height: 44,
           background: `radial-gradient(circle at 35% 35%, ${color}33, ${color}11)`,
           border: `1.5px solid ${color}88`,
+          borderRadius: '50%',
           boxShadow: selected
             ? `0 0 0 2px ${color}44, 0 0 18px ${color}33`
             : `0 0 10px ${color}22`,
@@ -67,7 +81,7 @@ function EntityNode({ data, selected }: NodeProps) {
         }}
         animate={selected ? { scale: [1, 1.06, 1] } : {}}
         transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-        title={name}
+        title={topic}
       >
         <div
           className="rounded-full"
@@ -79,40 +93,11 @@ function EntityNode({ data, selected }: NodeProps) {
           }}
         />
       </motion.div>
-
-      <div
-        className="absolute whitespace-nowrap text-[8px] font-semibold tracking-wide pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{
-          top: 'calc(100% + 2px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          color: '#e2e8f0',
-          textShadow: '0 0 6px rgba(0,0,0,0.95)',
-        }}
-      >
-        {short}
-      </div>
-
-      {/* Entity type badge */}
-      <div
-        className="absolute -top-1 -right-1 rounded-full border border-white/10"
-        style={{
-          background: 'rgba(0,0,0,0.8)',
-          color: '#e2e8f0',
-          fontSize: 7,
-          padding: '1px 5px',
-          lineHeight: 1.2,
-          boxShadow: '0 0 4px rgba(0,0,0,0.8)',
-          textTransform: 'uppercase',
-        }}
-      >
-        {entityType}
-      </div>
     </div>
   );
 }
 
-// ── Animated Edge (Relationship) ──────────────────────────────────
+// ── Animated Edge ──────────────────────────────────────────────────
 function RelationshipEdge({
   sourceX,
   sourceY,
@@ -170,7 +155,7 @@ function SummaryPanel({ nodes, edges, onClose }: { nodes: Node[]; edges: Edge[];
   const typeStats = useMemo(() => {
     const map = new Map<string, number>();
     nodes.forEach((n) => {
-      const t = (n.data?.metadata as any)?.entityType || n.data?.type || 'unknown';
+      const t = (n.data?.metadata as any)?.topic || n.data?.type || 'unknown';
       map.set(t, (map.get(t) || 0) + 1);
     });
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
@@ -249,15 +234,7 @@ function SummaryPanel({ nodes, edges, onClose }: { nodes: Node[]; edges: Edge[];
 
 // ── Knowledge Detail Modal ─────────────────────────────────────────
 function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => void }) {
-  const metadata = node.data?.metadata as {
-    name?: string;
-    entityType?: string;
-    description?: string;
-    properties?: Record<string, any>;
-    tags?: string[];
-    createdAt?: string;
-    url?: string;
-  } | undefined;
+  const metadata = node.data?.metadata as any;
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -291,14 +268,14 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
             style={{
-              background: `radial-gradient(circle at 35% 35%, ${resolveColor(metadata?.entityType, metadata?.name, 0)}aa, ${resolveColor(metadata?.entityType, metadata?.name, 0)}44)`,
+              background: `radial-gradient(circle at 35% 35%, ${resolveColor(metadata?.topic, metadata?.name, 0)}aa, ${resolveColor(metadata?.topic, metadata?.name, 0)}44)`,
             }}
           >
-            {metadata?.entityType === 'Company' ? '🏢' : metadata?.entityType === 'Person' ? '👤' : metadata?.entityType === 'Job' ? '💼' : '📦'}
+            📦
           </div>
           <div>
             <h3 className="text-slate-100 font-bold text-sm">{metadata?.name || node.data?.label || 'Untitled'}</h3>
-            <span className="text-[10px] text-slate-400">{metadata?.entityType || node.data?.type || 'Entity'}</span>
+            <span className="text-[10px] text-slate-400">{metadata?.topic || node.data?.type || 'Entity'}</span>
           </div>
         </div>
 
@@ -329,26 +306,12 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
           <div className="mb-3">
             <span className="text-[10px] text-slate-500 mb-1 block">태그</span>
             <div className="flex flex-wrap gap-1">
-              {metadata.tags.map((tag, i) => (
+              {metadata.tags.map((tag: any, i: number) => (
                 <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-300 border border-slate-600/30">
-                  #{tag}
+                  #{String(tag).replace(/^#/, '')}
                 </span>
               ))}
             </div>
-          </div>
-        )}
-
-        {metadata?.createdAt && (
-          <div className="text-[10px] text-slate-500 mb-2">
-            생성일: {metadata.createdAt}
-          </div>
-        )}
-
-        {metadata?.url && (
-          <div className="text-[10px] text-sky-400/80 mb-2 break-all">
-            <a href={metadata.url} target="_blank" rel="noopener noreferrer" className="hover:text-sky-300 transition-colors">
-              🔗 {metadata.url}
-            </a>
           </div>
         )}
 
@@ -428,6 +391,19 @@ export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onN
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 
+  const findKnowledgeContent = async (nodeId: string, docId: string) => {
+    try {
+      const response = await fetch(`/api/knowledge?id=${docId}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.documents?.find((d: { id: string }) => d.id === docId);
+      }
+    } catch (error) {
+      console.error('Failed to load knowledge content:', error);
+    }
+    return null;
+  };
+
   const nodeTypes = useMemo(() => ({ entityNode: EntityNode }), []);
   const edgeTypes = useMemo(() => ({ relationshipEdge: RelationshipEdge as any }), []);
 
@@ -444,6 +420,13 @@ export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onN
 
   const onNodeClickHandler = useCallback(
     async (event: React.MouseEvent, node: Node) => {
+      const metadata = node.data?.metadata as { id?: string } | undefined;
+      if (metadata?.id) {
+        const doc = await findKnowledgeContent(node.id, metadata.id);
+        if (doc) {
+          node.data = { ...node.data, metadata: { ...metadata, ...doc } };
+        }
+      }
       setSelectedNode(node);
       onNodeClick?.(node);
     },

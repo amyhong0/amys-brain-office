@@ -21,6 +21,11 @@ export interface KnowledgeDoc {
   };
 }
 
+function normalizeTags(raw: any): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean);
+}
+
 // 개발 환경용 로컬 저장소 초기화
 async function ensureLocalDir() {
   try {
@@ -40,7 +45,6 @@ async function withBlob<T>(fn: () => Promise<T>): Promise<T> {
     throw new Error('BLOB_READ_WRITE_TOKEN not configured');
   }
   const { put, list, del } = await import('@vercel/blob');
-  // @vercel/blob functions are passed via closure
   return fn();
 }
 
@@ -62,17 +66,17 @@ export async function loadKnowledgeDocs(): Promise<KnowledgeDoc[]> {
         const content = await response.text();
         const { data } = matter(content);
 
-      docs.push({
-        id: data.id || blob.pathname.replace('knowledge/', '').replace('.md', ''),
-        title: data.title || 'Untitled',
-        type: data.type || 'web',
-        tags: data.tags || [],
-        createdAt: data.createdAt || new Date().toISOString(),
-        summary: data.summary,
-        content: content.replace(/^---[\s\S]*?---/, '').trim(),
-        url: data.url,
-        metadata: (data.metadata as KnowledgeDoc['metadata']) || (data.topic ? { topic: data.topic } : undefined),
-      });
+        docs.push({
+          id: data.id || blob.pathname.replace('knowledge/', '').replace('.md', ''),
+          title: data.title || 'Untitled',
+          type: data.type || 'web',
+          tags: normalizeTags(data.tags),
+          createdAt: data.createdAt || new Date().toISOString(),
+          summary: data.summary,
+          content: content.replace(/^---[\s\S]*?---/, '').trim(),
+          url: data.url,
+          metadata: (data.metadata as KnowledgeDoc['metadata']) || (data.topic ? { topic: data.topic } : undefined),
+        });
       }
 
       return docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -94,7 +98,7 @@ export async function loadKnowledgeDocs(): Promise<KnowledgeDoc[]> {
         id: data.id || file.replace('.md', ''),
         title: data.title || 'Untitled',
         type: data.type || 'web',
-        tags: data.tags || [],
+        tags: normalizeTags(data.tags),
         createdAt: data.createdAt || new Date().toISOString(),
         summary: data.summary,
         content: content.replace(/^---[\s\S]*?---/, '').trim(),
@@ -116,7 +120,7 @@ export async function saveKnowledgeDoc(doc: KnowledgeDoc): Promise<string> {
     id: doc.id,
     title: doc.title,
     type: doc.type,
-    tags: doc.tags,
+    tags: normalizeTags(doc.tags),
     createdAt: doc.createdAt,
   };
 
