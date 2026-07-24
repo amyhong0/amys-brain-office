@@ -42,7 +42,7 @@ function resolveColor(type?: string, title = '', index = 0): string {
 
 // ── Entity Node ───────────────────────────────────────────────────
 function EntityNode({ data, selected }: NodeProps) {
-  const topic = ((data?.metadata as any)?.topic || data?.type || 'default') + '';
+  const topic = ((data?.metadata as any)?.topic || data?.label || 'default') + '';
   const name = ((data?.metadata as { name?: string })?.name || data?.label || '') + '';
   const color = resolveColor(topic, name, 0);
   const label = topic.length > 6 ? topic.slice(0, 6) + '…' : topic;
@@ -52,7 +52,6 @@ function EntityNode({ data, selected }: NodeProps) {
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
 
-      {/* 노드 위에 가로 라벨 */}
       <div
         className="absolute whitespace-nowrap text-[8px] font-semibold tracking-wide pointer-events-none"
         style={{
@@ -67,32 +66,18 @@ function EntityNode({ data, selected }: NodeProps) {
       </div>
 
       <motion.div
-        className="relative rounded-full flex items-center justify-center"
+        className="rounded-full flex items-center justify-center"
         style={{
-          width: 44,
-          height: 44,
-          background: `radial-gradient(circle at 35% 35%, ${color}33, ${color}11)`,
-          border: `1.5px solid ${color}88`,
-          borderRadius: '50%',
-          boxShadow: selected
-            ? `0 0 0 2px ${color}44, 0 0 18px ${color}33`
-            : `0 0 10px ${color}22`,
+          width: 36,
+          height: 36,
+          background: `radial-gradient(circle at 35% 35%, ${color}cc, ${color}66)`,
+          boxShadow: `0 0 12px ${color}88`,
           cursor: 'pointer',
         }}
         animate={selected ? { scale: [1, 1.06, 1] } : {}}
         transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-        title={topic}
-      >
-        <div
-          className="rounded-full"
-          style={{
-            width: '45%',
-            height: '45%',
-            background: `radial-gradient(circle, ${color}cc, ${color}44)`,
-            boxShadow: `0 0 8px ${color}66`,
-          }}
-        />
-      </motion.div>
+        title={label}
+      />
     </div>
   );
 }
@@ -306,12 +291,32 @@ function KnowledgeDetailModal({ node, onClose }: { node: Node; onClose: () => vo
           <div className="mb-3">
             <span className="text-[10px] text-slate-500 mb-1 block">태그</span>
             <div className="flex flex-wrap gap-1">
-              {metadata.tags.map((tag: any, i: number) => (
+              {metadata.tags.map((tag, i) => (
                 <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-700/40 text-slate-300 border border-slate-600/30">
                   #{String(tag).replace(/^#/, '')}
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {metadata?.createdAt && (
+          <div className="text-[10px] text-slate-500 mb-2">
+            생성일: {metadata.createdAt}
+          </div>
+        )}
+
+        {metadata?.url && (
+          <div className="text-[10px] text-sky-400/80 mb-2 break-all">
+            <a href={metadata.url} target="_blank" rel="noopener noreferrer" className="hover:text-sky-300 transition-colors">
+              🔗 {metadata.url}
+            </a>
+          </div>
+        )}
+
+        {metadata?.content && (
+          <div className="text-[11px] text-slate-400 leading-relaxed whitespace-pre-wrap">
+            {metadata.content}
           </div>
         )}
 
@@ -420,14 +425,13 @@ export default function KnowledgeGraph({ nodes: propNodes, edges: propEdges, onN
 
   const onNodeClickHandler = useCallback(
     async (event: React.MouseEvent, node: Node) => {
-      const metadata = node.data?.metadata as { id?: string } | undefined;
-      if (metadata?.id) {
+      const metadata = node.data?.metadata as { id?: string; content?: string } | undefined;
+      let content = metadata?.content;
+      if (!content && metadata?.id) {
         const doc = await findKnowledgeContent(node.id, metadata.id);
-        if (doc) {
-          node.data = { ...node.data, metadata: { ...metadata, ...doc } };
-        }
+        if (doc) content = doc.content;
       }
-      setSelectedNode(node);
+      setSelectedNode({ ...node, data: { ...node.data, metadata: { ...metadata, content } } } as Node);
       onNodeClick?.(node);
     },
     [onNodeClick]
