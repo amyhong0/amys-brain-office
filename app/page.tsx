@@ -95,24 +95,33 @@ export default function Home() {
     url?: string;
   };
 
-  // 지식 그래프 재구성 (오직 공유 태그, web entity 제외)
+  const toTopic = (doc: KnowledgeDoc) => {
+    const raw = (doc as any).metadata?.topic;
+    if (raw && raw !== 'web') return raw;
+    const fromTags = Array.isArray(doc.tags) ? doc.tags.find((t) => t && t !== 'web') : undefined;
+    if (fromTags) return fromTags;
+    const token = (doc.title || '').split(' ')[0];
+    return token || 'topic';
+  };
+
+  // 지식 그래프 재구성
   const rebuildGraph = useCallback((docs: KnowledgeDoc[]) => {
-    const filtered = docs.filter(doc => ((doc as any).metadata?.topic || doc.type) !== 'web');
-    const nodes = filtered.map((doc, idx) => ({
+    const nodes = docs.map((doc, idx) => ({
       id: doc.id,
       position: { x: (idx % 5) * 180 - 360, y: Math.floor(idx / 5) * 120 - 120 },
-          data: {
-            label: doc.title || 'Untitled',
-            type: doc.type,
-            metadata: { 
-              title: doc.title, 
-              entityType: (doc as any).metadata?.topic, 
-              topic: (doc as any).metadata?.topic || doc.type, 
-              tags: doc.tags, 
-              createdAt: doc.createdAt, 
-              url: doc.url 
-            },
-          },
+      data: {
+        label: doc.title || 'Untitled',
+        type: doc.type,
+        metadata: {
+          title: doc.title,
+          entityType: toTopic(doc),
+          topic: toTopic(doc),
+          tags: doc.tags,
+          createdAt: doc.createdAt,
+          url: doc.url,
+          content: doc.content,
+        },
+      },
       style: {
         width: 10,
         height: 10,
@@ -132,7 +141,6 @@ export default function Home() {
         const tagsA = (nodes[i].data?.metadata as any)?.tags || [];
         const tagsB = (nodes[j].data?.metadata as any)?.tags || [];
         const sharedTags = tagsA.filter((tag: string) => tagsB.includes(tag));
-        // ONLY shared tags matter - typeMatch 제거, 최소 2개 이상 공유 태그 필요
         const strength = sharedTags.length;
         if (strength >= 2) {
           edges.push({
@@ -192,7 +200,6 @@ export default function Home() {
       delay: number;
     }> = [];
 
-    // 1. 오케스트레이터(대마법사)가 작업 분석
     steps.push({
       agentId: 'cauldron',
       task: `사용자 메시지 분석: "${message.substring(0, 30)}..."`,
@@ -200,7 +207,6 @@ export default function Home() {
       delay: 800,
     });
 
-    // 2. 현자(desk)가 지식 검색/분석
     steps.push({
       agentId: 'desk',
       task: '지식 베이스에서 관련 문서 검색 중...',
@@ -208,7 +214,6 @@ export default function Home() {
       delay: 1200,
     });
 
-    // 3. 서고관리자(library)가 의미 검색
     steps.push({
       agentId: 'library',
       task: '의미 기반 검색 및 문서 매칭...',
@@ -216,7 +221,6 @@ export default function Home() {
       delay: 1000,
     });
 
-    // 4. 오케스트레이터가 결과 취합
     steps.push({
       agentId: 'cauldron',
       task: '검색 결과 취합 및 LLM 응답 생성...',
@@ -224,7 +228,6 @@ export default function Home() {
       delay: 1500,
     });
 
-    // 5. 기록가(archive)가 대화 기록 저장
     steps.push({
       agentId: 'archive',
       task: '대화 컨텍스트 저장 중...',
@@ -492,11 +495,10 @@ export default function Home() {
                 edges={graphEdges} 
                 onNodeClick={(node) => {
                   setSelectedGraphNode(node);
-                  setShowFullGraphContent(false);
+                  setShowFullGraphContent(true);
                 }}
               />
-              
-              
+
               {selectedGraphNode && showFullGraphContent && (
                 <div 
                   className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
@@ -522,7 +524,7 @@ export default function Home() {
                         <span className="text-[10px] text-purple-300">{((selectedGraphNode.data?.metadata as { type?: string })?.type) || '문서'}</span>
                       </div>
                     </div>
-                    
+
                     {(() => {
                       const tags = (selectedGraphNode.data?.metadata as { tags?: string[] })?.tags;
                       return tags && tags.length > 0 && (
@@ -536,33 +538,32 @@ export default function Home() {
                         </div>
                       );
                     })()}
-                    
+
                     {(selectedGraphNode.data?.metadata as { createdAt?: string })?.createdAt && (
                       <div className="text-[10px] text-gray-400 mb-2">생성일: {(selectedGraphNode.data?.metadata as { createdAt?: string }).createdAt}</div>
                     )}
-                    
+
                     {(selectedGraphNode.data?.metadata as { url?: string })?.url && (
                       <div className="text-[10px] text-blue-400 mb-2 break-all">
                         <a href={(selectedGraphNode.data?.metadata as { url?: string }).url} target="_blank" rel="noopener noreferrer">🔗 {(selectedGraphNode.data?.metadata as { url?: string }).url}</a>
                       </div>
                     )}
-                    
-                        <div className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 whitespace-pre-wrap">
-                          {(() => {
-                            const raw = (selectedGraphNode.data?.metadata as any)?.content;
-                            if (typeof raw === 'string') {
-                              const snippet = raw.length > 1200 ? raw.slice(0, 1200) + '\n\n...' : raw;
-                              return (
-                                <>
-                                  <div className="text-[10px] text-gray-400 mb-1">본문 미리보기</div>
-                                  <div className="whitespace-pre-wrap text-gray-300">{snippet}</div>
-                                </>
-                              );
-                            }
-                            return ((selectedGraphNode.data?.metadata as { title?: string })?.title) || '지식';
-                          })()}
-                        </div>
-                    
+
+                    <div className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 whitespace-pre-wrap">
+                      {(() => {
+                        const raw = (selectedGraphNode.data?.metadata as any)?.content;
+                        if (typeof raw === 'string') {
+                          return (
+                            <>
+                              <div className="text-[10px] text-gray-400 mb-1">본문</div>
+                              <div className="whitespace-pre-wrap text-gray-300">{raw}</div>
+                            </>
+                          );
+                        }
+                        return ((selectedGraphNode.data?.metadata as { title?: string })?.title) || '지식';
+                      })()}
+                    </div>
+
                     <button onClick={() => {
                       setShowFullGraphContent(false);
                       setSelectedGraphNode(null);
