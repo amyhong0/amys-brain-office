@@ -8,7 +8,7 @@ import KnowledgeHistory from '@/components/knowledge/knowledge-history';
 import { AgentState } from '@/lib/agents/types';
 import { Node, Edge } from 'reactflow';
 import { Upload, Link, LayoutDashboard, Share2, Archive } from 'lucide-react';
-import { ThinkingOrb } from 'thinking-orbs';
+import { ThinkingOrb } from '@/components/ThinkingOrb';
 
 type Tab = 'dashboard' | 'graph' | 'history';
 
