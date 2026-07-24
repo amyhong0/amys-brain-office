@@ -95,9 +95,10 @@ export default function Home() {
     url?: string;
   };
 
-  // 지식 그래프 재구성 (개선: 오직 공유 태그로만 연결)
+  // 지식 그래프 재구성 (오직 공유 태그, web entity 제외)
   const rebuildGraph = useCallback((docs: KnowledgeDoc[]) => {
-    const nodes = docs.map((doc, idx) => ({
+    const filtered = docs.filter(doc => ((doc as any).metadata?.topic || doc.type) !== 'web');
+    const nodes = filtered.map((doc, idx) => ({
       id: doc.id,
       position: { x: (idx % 5) * 180 - 360, y: Math.floor(idx / 5) * 120 - 120 },
       data: {
@@ -128,9 +129,9 @@ export default function Home() {
     const edges: Edge[] = [];
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
-        const tagsA = nodes[i].data?.metadata?.tags || [];
-        const tagsB = nodes[j].data?.metadata?.tags || [];
-        const sharedTags = tagsA.filter(tag => tagsB.includes(tag));
+        const tagsA = (nodes[i].data?.metadata as any)?.tags || [];
+        const tagsB = (nodes[j].data?.metadata as any)?.tags || [];
+        const sharedTags = tagsA.filter((tag: string) => tagsB.includes(tag));
         // ONLY shared tags matter - typeMatch 제거, 최소 2개 이상 공유 태그 필요
         const strength = sharedTags.length;
         if (strength >= 2) {
