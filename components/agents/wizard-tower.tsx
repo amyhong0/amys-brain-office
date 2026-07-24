@@ -215,21 +215,116 @@ function Character({
           <div className="absolute -top-2 -right-2 w-4 h-4 bg-purple-500/50 rounded-full animate-pulse pointer-events-none" />
         )}
         
-         {/* 마법진 Aura 효과 - 작업 중일 때 */}
+         {/* 마법진 Aura 효과 - 작업 중일 때 (향상된 버전) */}
          {isWorking && (
            <motion.div
-             className="absolute -top-6 -left-6 -right-6 -bottom-6 rounded-full pointer-events-none"
-             animate={{
-               scale: [1, 1.2, 1],
-             }}
-             transition={{
-               duration: 2,
-               repeat: Infinity,
-               ease: "easeInOut",
-             }}
+             className="absolute -top-8 -left-8 -right-8 -bottom-8 pointer-events-none"
+             initial={{ opacity: 0, scale: 0.5 }}
+             animate={{ opacity: 1, scale: 1 }}
+             exit={{ opacity: 0, scale: 0.5 }}
+             transition={{ duration: 0.5 }}
            >
-             <div className="w-full h-full rounded-full border-2 border-purple-400/50 animate-spin" style={{ animationDuration: '3s' }} />
-             <div className="absolute inset-2 rounded-full border-2 border-purple-300/30 animate-spin" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
+             {/* 외부 링 1 - 시계 방향 회전 */}
+             <div 
+               className="absolute inset-0 rounded-full animate-spin"
+               style={{ 
+                 animationDuration: '4s',
+                 border: `2px solid transparent`,
+                 background: `conic-gradient(from 0deg, ${zone.color}00, ${zone.color}88, ${zone.color}ff, ${zone.color}88, ${zone.color}00)`,
+                 WebkitMask: 'radial-gradient(transparent 65%, black 66%, black 90%, transparent 91%)',
+                 mask: 'radial-gradient(transparent 65%, black 66%, black 90%, transparent 91%)',
+                 filter: 'blur(1px)',
+               }}
+             />
+             
+             {/* 외부 링 2 - 반시계 방향 회전 */}
+             <div 
+               className="absolute inset-1 rounded-full animate-spin"
+               style={{ 
+                 animationDuration: '3s',
+                 animationDirection: 'reverse',
+                 border: `2px solid transparent`,
+                 background: `conic-gradient(from 180deg, ${zone.color}00, ${zone.color}66, ${zone.color}aa, ${zone.color}66, ${zone.color}00)`,
+                 WebkitMask: 'radial-gradient(transparent 70%, black 71%, black 85%, transparent 86%)',
+                 mask: 'radial-gradient(transparent 70%, black 71%, black 85%, transparent 86%)',
+                 filter: 'blur(1px)',
+               }}
+             />
+             
+             {/* 내부 링 3 - 빠르게 회전 */}
+             <div 
+               className="absolute inset-2 rounded-full animate-spin"
+               style={{ 
+                 animationDuration: '2s',
+                 border: `1px solid ${zone.color}88`,
+                 boxShadow: `0 0 15px ${zone.color}44, inset 0 0 15px ${zone.color}44`,
+                 opacity: 0.8,
+               }}
+             />
+             
+             {/* 빛나는 중심점 */}
+             <div 
+               className="absolute"
+               style={{
+                 top: '50%',
+                 left: '50%',
+                 width: '8px',
+                 height: '8px',
+                 transform: 'translate(-50%, -50%)',
+                 borderRadius: '50%',
+                 background: zone.color,
+                 boxShadow: `0 0 20px ${zone.color}, 0 0 40px ${zone.color}66`,
+               }}
+             >
+               <motion.div
+                 className="absolute inset-0 rounded-full"
+                 animate={{
+                   scale: [1, 2, 1],
+                   opacity: [0.8, 0, 0.8],
+                 }}
+                 transition={{
+                   duration: 1.5,
+                   repeat: Infinity,
+                   ease: 'easeOut',
+                 }}
+                 style={{
+                   background: `radial-gradient(circle, ${zone.color}ff, transparent)`,
+                 }}
+               />
+             </div>
+
+             {/* 룬 문자 효과 */}
+             {Array.from({ length: 8 }).map((_, i) => {
+               const angle = (i / 8) * Math.PI * 2;
+               const radius = 55;
+               const x = 50 + Math.cos(angle) * radius / 2;
+               const y = 50 + Math.sin(angle) * radius / 2;
+               const runes = ['ᛦ', 'ᛉ', 'ᛟ', 'ᚨ', 'ᚷ', 'ᛞ', 'ᛏ', 'ᛒ'];
+               return (
+                 <motion.div
+                   key={i}
+                   className="absolute text-[10px] font-bold pointer-events-none"
+                   style={{
+                     left: `${x}%`,
+                     top: `${y}%`,
+                     color: zone.color,
+                     transform: 'translate(-50%, -50%)',
+                     textShadow: `0 0 10px ${zone.color}88`,
+                   }}
+                   animate={{
+                     opacity: [0.3, 1, 0.3],
+                     scale: [0.8, 1.2, 0.8],
+                   }}
+                   transition={{
+                     duration: 2 + Math.random(),
+                     repeat: Infinity,
+                     delay: i * 0.3,
+                   }}
+                 >
+                   {runes[i]}
+                 </motion.div>
+               );
+             })}
            </motion.div>
          )}
 

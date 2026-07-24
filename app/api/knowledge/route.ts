@@ -90,6 +90,40 @@ function extractKeywordsFromContent(text: string): string[] {
     .map(([word]) => word);
 }
 
+async function callNvidiaLLM(prompt: string, systemPrompt: string): Promise<string | null> {
+  try {
+    const apiResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'meta/llama-3.1-8b-instruct',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,
+        top_p: 0.9,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!apiResponse.ok) {
+      const errText = await apiResponse.text();
+      console.error(`NVIDIA API error (${apiResponse.status}):`, errText);
+      return null;
+    }
+
+    const data = await apiResponse.json();
+    return data.choices[0]?.message?.content || null;
+  } catch (error) {
+    console.error('NVIDIA API call failed:', error);
+    return null;
+  }
+}
+
 async function fetchWebContent(url: string): Promise<{ title: string; content: string; keywords: string[] }> {
   try {
     const response = await fetch(url, {
@@ -137,106 +171,79 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
 
     const rawContent = $('body').text().trim();
 
-    // content가 부족해도 LLM으로 분석 시도
-    // 본문이 비어있어도 LLM이 제목+URL로 분석
-    {
+    // LLM API 호출 - 더 강력한 모델 사용
+    const systemPrompt = `당신은 웹 콘텐츠 분석 전문가입니다. 주어진 HTML 본문에서 핵심 정보만 추출하여 JSON 형식으로 반환하세요.
+
+반드시 다음 JSON 형식만 출력하세요 (다른 텍스트 없이):
+{
+  "title": "50자 이내의 핵심 제목 (언론사명, 사이트명 제외)",
+  "content": "800자 이내의 핵심 요약 (기자정보, 저작권문구, 광고, 네비게이션 등 불필요한 내용 제외)",
+  "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"]
+}`;
+
+    const userPrompt = `URL: ${url}
+제목: ${rawTitle}
+
+본문 내용:
+${rawContent.substring(0, 12000)}
+
+위 내용을 분석하여 JSON 형식으로 출력하세요.`;
+
+    const llmResult = await callNvidiaLLM(userPrompt, systemPrompt);
+
+    if (llmResult) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-        const apiResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'nvidia/nemotron-mini-4b-instruct',
-            messages: [
-              {
-                role: 'system',
-                content: `당신은 웹 콘텐츠에서 핵심 정보만 추출하는 전문가입니다.
-
-1. 제목: 기사의 핵심 주제만 50자 이내로 추출 (언론사명, 웹사이트명, "뉴스", "기사" 등 제외)
-
-2. 본문: 다음 항목을 완전히 제외하고 핵심 내용만 800자 이내로 요약
-   - 기자 이름/기자 소개 (예: "홍혜원 기자", "김철수 기자", "기자 정보", "제보", "무단전재")
-   - 저작권/재배포 문구 (예: "copyright", "무단전재", "재배포 금지", "저작권자")
-   - 구독/Newsletter 관련 문구
-   - SNS 공유, 프린트, 기사 저장 버튼 텍스트
-   - 더보기 링크, 관련 기사, 추천 기사
-   - 광고, 배너, 제휴, 스폰서 관련 텍스트
-   - 입력일시, 수정일시, 등록일시
-   - 페이지 번호, 페이지 네비게이션
-   - 빈 줄, 공백만 있는 줄
-   - "CU 모델이", "BGF리테일 제공" 같은 캡션 텍스트
-   - "파이낸셜뉴스" 같은 언론사명
-   - "21일 업계에 따르면" 같은 도입부
-
-3. 키워드: 기사와 관련된 핵심 개념/주제 5개를 한국어로 추출 (콤마로 구분)
-
-출력 형식:
-제목: [제목]
-본문: [본문]
-키워드: [키워드1, 키워드2, 키워드3, 키워드4, 키워드5]`
-              },
-              {
-                role: 'user',
-                content: `${rawTitle}\n\nURL: ${url}\n\n본문: ${rawContent || '(내용 없음 - 제목과 URL만으로 분석)'}`
-              }
-            ],
-            temperature: 0.4,
-            top_p: 0.9,
-            max_tokens: 4096,
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (!apiResponse.ok) {
-          throw new Error(`API error: ${apiResponse.status}`);
+        // JSON 추출 시도 (마크다운 코드 블록 처리)
+        let jsonStr = llmResult;
+        const jsonMatch = llmResult.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1].trim();
         }
-
-        const apiBuffer = await apiResponse.arrayBuffer();
-        const apiText = Buffer.from(apiBuffer).toString('utf-8');
-        const data = JSON.parse(apiText);
-        const result = data.choices[0]?.message?.content || '';
-
-        const titleMatch = result.match(/제목:\s*([^\n]+)/);
-        const contentMatch = result.match(/본문:\s*([\s\S]+?)(?=키워드:|$)/);
-        const keywordMatch = result.match(/키워드:\s*([^\n]+)/);
-
-        const title = titleMatch ? titleMatch[1].trim() : rawTitle.trim();
-        let content = contentMatch ? contentMatch[1].trim().replace(/\s{2,}/g, ' ') : rawContent;
-
-        let keywords: string[] = [];
-        if (keywordMatch) {
-          keywords = keywordMatch[1].split(',').map((k: string) => k.trim()).filter((k: string) => k.length > 0);
-        }
+        const parsed = JSON.parse(jsonStr);
+        
+        const title = parsed.title?.trim() || rawTitle.trim();
+        let content = parsed.content?.trim() || rawContent;
+        let keywords: string[] = parsed.keywords || [];
+        
         if (keywords.length === 0) keywords = extractKeywordsFromContent(content);
 
         content = content
           .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
           .replace(/\s+[가-힣]{2,4}\s+기자/g, '')
           .replace(/이 시각 핫클릭 이슈[\s\S]*/g, '')
-          .replace(/localplace@fnnews\.com/g, '')
           .trim();
 
         return { title, content, keywords };
-      } catch (llmError) {
-        console.error('LLM processing error:', llmError);
-        return {
-          title: rawTitle.trim(),
-          content: rawContent || `URL: ${url}\n\n콘텐츠 추출 실패 - 직접 방문하여 확인하세요.`,
-          keywords: extractKeywordsFromContent(rawTitle)
-        };
+      } catch (parseError) {
+        console.error('LLM JSON parse error, trying regex fallback:', parseError);
+        // JSON 파싱 실패 시 정규식으로 추출 시도
+        const titleMatch = llmResult.match(/"title"\s*:\s*"([^"]+)"/);
+        const contentMatch = llmResult.match(/"content"\s*:\s*"([^"]+)"/);
+        const keywordMatch = llmResult.match(/"keywords"\s*:\s*\[([^\]]+)\]/);
+        
+        const title = titleMatch ? titleMatch[1] : rawTitle.trim();
+        const content = contentMatch ? contentMatch[1] : rawContent;
+        let keywords: string[] = [];
+        if (keywordMatch) {
+          keywords = keywordMatch[1].split(',').map(k => k.trim().replace(/"/g, '')).filter(k => k.length > 0);
+        }
+        if (keywords.length === 0) keywords = extractKeywordsFromContent(content);
+        
+        return { title, content, keywords };
       }
     }
 
+    // LLM 실패 시 향상된 fallback
+    console.log('LLM returned null, using enhanced fallback');
+    const fallbackClean = cleanTextFallback(rawContent);
+    const fallbackKeywords = fallbackClean.keywords.length > 0 
+      ? fallbackClean.keywords 
+      : extractKeywordsFromContent(rawTitle + ' ' + rawContent.substring(0, 500));
+    
     return {
       title: rawTitle.trim(),
-      content: `URL: ${url}\n\n본문이 너무 짧아 자동 요약할 수 없습니다. 직접 방문하여 확인하세요.`,
-      keywords: extractKeywordsFromContent(rawTitle)
+      content: fallbackClean.content || `URL: ${url}\n\n콘텐츠 추출 실패 - 직접 방문하여 확인하세요.`,
+      keywords: fallbackKeywords
     };
   } catch (error) {
     console.error('Failed to fetch web content:', error);
@@ -275,8 +282,7 @@ export async function POST(request: NextRequest) {
     if (url && (!content || content === url)) {
       const webData = await fetchWebContent(url);
       if (!title || title.includes('문서') || title === url) title = webData.title;
-      // LLM 처리 실패 시 fallback 정제 적용
-      content = webData.content || cleanTextFallback(url).content;
+      content = webData.content || cleanTextFallback(webData.content).content;
       if (webData.keywords && webData.keywords.length > 0) tags = webData.keywords;
       summary = content.substring(0, 100) + '...';
     }

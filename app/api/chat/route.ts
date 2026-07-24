@@ -1,6 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { loadKnowledgeDocs } from '@/lib/utils/knowledge-storage';
 
+async function callNvidiaLLM(messages: { role: string; content: string }[]): Promise<string | null> {
+  try {
+    const apiResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'meta/llama-3.1-8b-instruct',
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!apiResponse.ok) {
+      const errText = await apiResponse.text();
+      console.error(`NVIDIA API error (${apiResponse.status}):`, errText);
+      return null;
+    }
+
+    const data = await apiResponse.json();
+    return data.choices[0]?.message?.content || null;
+  } catch (error) {
+    console.error('NVIDIA API call failed:', error);
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -57,46 +87,12 @@ ${knowledgeContext}
 7. 문서 제목만 알려주지 말고, 실제 문서 내용을 바탕으로 답변하세요.`
       : `당신은 유용한 AI 어시스턴트입니다. 반드시 한국어로만 간결하고 친절하게 답변해주세요.`;
 
-    const requestBody = JSON.stringify({
-      model: 'nvidia/nemotron-mini-4b-instruct',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      temperature: 0.4,
-      max_tokens: 1024,
-    });
+    const llmResult = await callNvidiaLLM([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message }
+    ]);
 
-    console.log('Request body:', requestBody);
-
-    const llmResponse = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: requestBody,
-    });
-
-    if (!llmResponse.ok) {
-      const errText = await llmResponse.text();
-      console.error('LLM API Error Details:', {
-        status: llmResponse.status,
-        statusText: llmResponse.statusText,
-        headers: Object.fromEntries(llmResponse.headers.entries()),
-        body: errText,
-        requestHeaders: {
-          'Authorization': process.env.NVIDIA_API_KEY ? 'Bearer ***' : 'MISSING',
-          'Content-Type': 'application/json',
-        },
-      });
-      throw new Error(`LLM API error ${llmResponse.status}: ${errText}`);
-    }
-
-    const apiBuffer = await llmResponse.arrayBuffer();
-    const apiText = Buffer.from(apiBuffer).toString('utf-8');
-    const data = JSON.parse(apiText);
-    const aiResponse = data.choices[0]?.message?.content || '응답을 생성할 수 없습니다.';
+    const aiResponse = llmResult || '죄송합니다. 지식 베이스에서 관련 정보를 찾을 수 없습니다. 다른 질문을 해주시겠어요?';
 
     return NextResponse.json({ 
       response: aiResponse,

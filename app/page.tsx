@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import WizardTower from '@/components/agents/wizard-tower';
 import KnowledgeGraph from '@/components/graph/knowledge-graph';
 import ChatInterface, { Message } from '@/components/chat/chat-interface';
@@ -8,6 +8,8 @@ import KnowledgeHistory from '@/components/knowledge/knowledge-history';
 import { AgentState } from '@/lib/agents/types';
 import { Node, Edge } from 'reactflow';
 import { Upload, Link, LayoutDashboard, Share2, Archive } from 'lucide-react';
+
+const ThinkingOrb = lazy(() => import('thinking-orbs').then(mod => ({ default: mod.ThinkingOrb })));
 
 type Tab = 'dashboard' | 'graph' | 'history';
 
@@ -35,93 +37,6 @@ interface SpellLog {
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-}
-
-function generateResponse(message: string): string {
-  const msg = message.toLowerCase();
-  const wantsSummary = /(요약|정리|모아|이번주|최근|요즘)/.test(message);
-  const wantsNVIDIA = /(nvidia|엔비디아|rtx|gpu|블랙웰|blackwell|cuda|그래픽)/i.test(message);
-  const wantsAI = /(ai|인공지능|딥러닝|머신러닝|신경망|neural)/i.test(message);
-
-  if (wantsSummary) {
-    if (wantsNVIDIA) {
-      return `🔍 NVIDIA 관련 지식을 정리해드립니다!
-
-📄 **관련 지식**
-
-1. **[NVIDIA AI GPU 아키텍처 분석](/knowledge/nvidia)** (2026-07-20)
-   - Blackwell GPU, CUDA 최적화
-   - 태그: #NVIDIA #GPU #AI
-
-2. **[NVIDIA 관련 기술 문서](/knowledge/nvidia-related)** (2026-07-19)
-   - 그래픽 처리 및 AI 가속
-   - 태그: #HW #딥러닝
-
-💡 제목을 클릭하여 전체 내용을 확인하세요!`;
-    }
-    if (wantsAI) {
-      return `🔍 AI 관련 지식을 정리해드립니다!
-
-📄 **관련 지식**
-
-1. **[NVIDIA AI GPU 아키텍처 분석](/knowledge/nvidia)** (2026-07-20)
-   - Blackwell GPU 구조 분석
-   - 태그: #AI #GPU #NVIDIA
-
-2. **[MCP 프로토콜 기술 문서](/knowledge/mcp)** (2026-07-19)
-   - AI 에이전트 연결 표준
-   - 태그: #MCP #AI
-
-💡 제목을 클릭하여 전체 내용을 확인하세요!`;
-    }
-    return `🔍 요청하신 지식을 정리해드립니다!
-
-관련 문서를 찾았습니다. 구체적인 주제를 알려주시면 더 자세히 찾아드릴게요.`;
-  }
-  
-  if (wantsNVIDIA) {
-    return `🖥️ [NVIDIA AI GPU 아키텍처 분석](/knowledge/nvidia) 관련 내용입니다:
-
-**Blackwell GPU**: 성능 2.5x 향상
-**CUDA**: 병렬 컴퓨팅 최적화
-
-자세한 내용은 제목을 클릭해주세요!`;
-  }
-  
-  if (wantsAI) {
-    return `🤖 [AI 시스템 설계 가이드](/knowledge/ai) 관련 내용입니다:
-
-**멀티 에이전트**: Orchestrator Pattern
-**RAG**: 검색 증강 생성
-
-자세한 내용은 제목을 클릭해주세요!`;
-  }
-  
-  if (/(mcp|프로토콜)/i.test(message)) {
-    return `🔌 MCP(Model Context Protocol) 관련 내용:
-
-**MCP 프로토콜 개요**
-- AI 에이전트와 외부 도구 연결 표준
-- JSON-RPC 기반 통신
-
-현재 이 시스템도 MCP를 활용 중입니다!`;
-  }
-  
-  if (/(추가|저장|올려|업로드)/.test(message)) {
-    return `✅ 문서 추가 요청입니다!
-
-파일 업로드 또는 웹 링크 입력으로 지식을 추가할 수 있어요.`;
-  }
-  
-  if (/(안녕|hello|hi)/i.test(message)) {
-    return `안녕하세요! 🧙‍♂️
-
-저는 당신의 지식 관리를 도와드리는 AI 에이전트입니다.`;
-  }
-
-  return `🧙‍♂️ "${message}"에 대해 검색 중입니다...
-
-무엇이든 도와드릴 수 있도록 말씀해주세요!`;
 }
 
 const WELCOME_MSG: Message = {
@@ -261,34 +176,91 @@ export default function Home() {
     }]);
   }, []);
 
-  const simulate = async (steps: [string, number, string?, string?][]) => {
-    for (const [task, pct, agentId, spellLog] of steps) {
-      setCurrentTask(task);
-      setProgress(pct);
-      if (agentId && spellLog) {
-        const agent = agents.find(a => a.id === agentId);
-        const agentName = agent?.name || agentId;
-        setAgents(prev => prev.map(a =>
-          a.id === agentId ? { ...a, status: 'working', currentTask: task } : a
-        ));
-        addSpellLog(agentId, agentName, spellLog, 'success');
-      }
-      await new Promise(r => setTimeout(r, 600));
-    }
-  };
+  // 멀티 에이전트 워크플로우 시뮬레이션
+  const runAgentWorkflow = useCallback(async (message: string) => {
+    const steps: Array<{
+      agentId: string;
+      task: string;
+      spellLog: string;
+      delay: number;
+    }> = [];
+
+    // 1. 오케스트레이터(대마법사)가 작업 분석
+    steps.push({
+      agentId: 'cauldron',
+      task: `사용자 메시지 분석: "${message.substring(0, 30)}..."`,
+      spellLog: `사용자 입력을 분석하여 적합한 에이전트에 작업 분배`,
+      delay: 800,
+    });
+
+    // 2. 현자(desk)가 지식 검색/분석
+    steps.push({
+      agentId: 'desk',
+      task: '지식 베이스에서 관련 문서 검색 중...',
+      spellLog: '지식 베이스에서 관련 문서 검색 및 분석',
+      delay: 1200,
+    });
+
+    // 3. 서고관리자(library)가 의미 검색
+    steps.push({
+      agentId: 'library',
+      task: '의미 기반 검색 및 문서 매칭...',
+      spellLog: '의미 기반 검색으로 가장 관련성 높은 문서 선별',
+      delay: 1000,
+    });
+
+    // 4. 오케스트레이터가 결과 취합
+    steps.push({
+      agentId: 'cauldron',
+      task: '검색 결과 취합 및 LLM 응답 생성...',
+      spellLog: '모든 에이전트의 결과를 취합하여 최종 응답 생성',
+      delay: 1500,
+    });
+
+    // 5. 기록가(archive)가 대화 기록 저장
+    steps.push({
+      agentId: 'archive',
+      task: '대화 컨텍스트 저장 중...',
+      spellLog: '대화 기록을 지식 보관소에 저장',
+      delay: 500,
+    });
+
+    return steps;
+  }, []);
+
+  // 지식 추가 중 로딩 상태
+  const [isKnowledgeAdding, setIsKnowledgeAdding] = useState(false);
 
   const handleSendMessage = useCallback(async (text: string) => {
     setIsLoading(true);
     setError('');
-    try {
-      await simulate([
-        ['🧙‍♂️ 마법사들에게 지시 중...', 15, 'cauldron', '마법사들에게 지시 중...'],
-        ['🔮 지식 문서 검색 중...', 30, 'desk', '지식 데이터베이스 검색 중...'],
-        ['🔎 관련 문서 분석 중...', 55, 'library', '관련 문서 발견! 분석 시작...'],
-        ['📖 LLM이 답변 생성 중...', 80, 'desk', '답변 생성 중...'],
-        ['✨ 마법 완성 중...', 95, 'cauldron', '주문 완성!'],
-      ]);
+    setCurrentTask('멀티 에이전트 워크플로우 시작...');
+    setProgress(10);
 
+    try {
+      // 멀티 에이전트 워크플로우 실행
+      const workflowSteps = await runAgentWorkflow(text);
+      
+      // 각 에이전트 순차 실행
+      for (const step of workflowSteps) {
+        setCurrentTask(step.task);
+        
+        // 에이전트 상태 업데이트
+        setAgents(prev => prev.map(a =>
+          a.id === step.agentId ? { ...a, status: 'working', currentTask: step.task } : a
+        ));
+        
+        const agent = agents.find(a => a.id === step.agentId);
+        addSpellLog(step.agentId, agent?.name || step.agentId, step.spellLog, 'success');
+        
+        await new Promise(r => setTimeout(r, step.delay));
+        
+        // 에이전트를 idle로 되돌리지 않음 (마법진 유지)
+      }
+
+      setProgress(50);
+
+      // 실제 LLM API 호출
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,13 +271,9 @@ export default function Home() {
         throw new Error('AI 응답을 가져오는데 실패했습니다');
       }
 
-      setIsLoading(false);
-      setProgress(0);
-      setCurrentTask('');
-
       const aiMsgId = `ai-${Date.now()}`;
       const data = await response.json();
-      const replyContent = data.response || generateResponse(text);
+      const replyContent = data.response;
 
       // LLM이 인용한 문서 제목 찾기 - [참조: 제목] 형식
       const citedTitles: string[] = [];
@@ -335,7 +303,11 @@ export default function Home() {
           url: doc.url,
         })),
       });
+
+      addSpellLog('cauldron', '대마법사', '최종 응답 생성 완료', 'success');
+      setProgress(100);
     } catch (err) {
+      addSpellLog('cauldron', '대마법사', '워크플로우 중 오류 발생', 'warning');
       addMessage({
         id: `err-${Date.now()}`,
         role: 'system',
@@ -343,9 +315,13 @@ export default function Home() {
         timestamp: new Date(),
       });
     } finally {
-      setAgents(BASE_AGENTS);
+      // 모든 에이전트를 idle로
+      setAgents(prev => prev.map(a => ({ ...a, status: 'idle', currentTask: undefined })));
+      setIsLoading(false);
+      setProgress(0);
+      setCurrentTask('');
     }
-  }, [addMessage, addSpellLog, agents]);
+  }, [addMessage, knowledgeDocs, agents, addSpellLog, runAgentWorkflow]);
 
   return (
     <div className="magic-bg min-h-screen">
@@ -403,16 +379,36 @@ export default function Home() {
                     type="text"
                     placeholder="URL을 입력하세요 (예: https://example.com)"
                     className="flex-1 px-3 py-2 bg-white/5 border border-purple-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                    disabled={isKnowledgeAdding}
                   />
                   <button
                     onClick={async () => {
                       if (urlInputRef.current?.value.trim()) {
                         const url = urlInputRef.current.value.trim();
-                        setAgents(prev => prev.map(a =>
-                          a.id === 'archive' ? { ...a, status: 'working', currentTask: '지식 영속화 중...' } : a
-                        ));
-                        addSpellLog('archive', '기록가', '지식 영속화 준비 중...', 'success');
+                        setIsKnowledgeAdding(true);
+                        setCurrentTask('멀티 에이전트가 지식 분석 중...');
                         
+                        // 1. 오케스트레이터가 작업 할당
+                        addSpellLog('cauldron', '대마법사', '새 URL 지식 추가 작업을 에이전트에 분배', 'success');
+                        setAgents(prev => prev.map(a =>
+                          a.id === 'cauldron' ? { ...a, status: 'working', currentTask: '작업 분배 중...' } : a
+                        ));
+                        await new Promise(r => setTimeout(r, 500));
+
+                        // 2. 현자가 웹 문서 분석
+                        setAgents(prev => prev.map(a =>
+                          a.id === 'desk' ? { ...a, status: 'working', currentTask: '웹 문서 분석 중...' } : a
+                        ));
+                        addSpellLog('desk', '현자', '웹 페이지에서 콘텐츠 추출 및 분석 시작', 'success');
+                        await new Promise(r => setTimeout(r, 800));
+
+                        // 3. 서고관리자가 의미 분석
+                        setAgents(prev => prev.map(a =>
+                          a.id === 'library' ? { ...a, status: 'working', currentTask: '의미 분석 및 태그 생성...' } : a
+                        ));
+                        addSpellLog('library', '서고관리자', '추출된 콘텐츠의 의미 분석 및 키워드 추출', 'success');
+                        await new Promise(r => setTimeout(r, 600));
+
                         try {
                           const response = await fetch('/api/knowledge', {
                             method: 'POST',
@@ -425,37 +421,59 @@ export default function Home() {
                           });
                           if (response.ok) {
                             const data = await response.json();
+                            
+                            // 4. 기록가가 저장
+                            setAgents(prev => prev.map(a =>
+                              a.id === 'archive' ? { ...a, status: 'working', currentTask: '지식 저장 중...' } : a
+                            ));
+                            addSpellLog('archive', '기록가', `새로운 지식 저장 완료: ${data.document?.title || url}`, 'success');
+                            await new Promise(r => setTimeout(r, 400));
+
                             addMessage({
                               id: `system-${Date.now()}`,
                               role: 'system',
                               content: `지식이 저장되었습니다: ${data.document?.title || url}`,
                               timestamp: new Date(),
                             });
-                            addSpellLog('archive', '기록가', '지식 영속화 완료!', 'success');
                             
                             // 저장 후 그래프 갱신을 위해 knowledgeDocs를 다시 로드
                             const res = await fetch('/api/knowledge');
                             const json = await res.json();
                             const docs = (json.documents || []) as KnowledgeDoc[];
                             setKnowledgeDocs(docs);
-                          } else {
-                            addSpellLog('archive', '기록가', '주문 실패! 다시 시도해라', 'warning');
+                            
+                            addSpellLog('cauldron', '대마법사', '지식 추가 워크플로우 완료', 'success');
                           }
                         } catch (error) {
-                          addSpellLog('archive', '기록가', '마법진 오류! 주문이 깨졌다', 'warning');
+                          addSpellLog('desk', '현자', '지식 추출 중 오류가 발생했습니다.', 'warning');
+                          addMessage({
+                            id: `err-${Date.now()}`,
+                            role: 'system',
+                            content: `⚠️ 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+                            timestamp: new Date(),
+                          });
                         } finally {
-                          setAgents(prev => prev.map(a =>
-                            a.id === 'archive' ? { ...a, status: 'idle', currentTask: '' } : a
-                          ));
+                          setIsKnowledgeAdding(false);
+                          setCurrentTask('');
+                          setAgents(prev => prev.map(a => ({ ...a, status: 'idle', currentTask: undefined })));
                           if (urlInputRef.current) urlInputRef.current.value = '';
                         }
                       }
                     }}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition-all font-medium"
+                    disabled={isKnowledgeAdding}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
-                    추가하기
+                    <span>추가하기</span>
                   </button>
                 </div>
+                {isKnowledgeAdding && (
+                  <div className="flex items-center justify-center gap-2 mt-2 text-purple-300 text-xs">
+                    <Suspense fallback={<div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"/>}>
+                      <ThinkingOrb state="working" size={20} theme="dark" />
+                    </Suspense>
+                    <span>진행중...</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
