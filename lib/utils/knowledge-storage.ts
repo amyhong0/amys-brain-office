@@ -14,6 +14,11 @@ export interface KnowledgeDoc {
   summary?: string;
   content?: string;
   url?: string;
+  metadata?: {
+    topic?: string;
+    entityType?: string;
+    [key: string]: any;
+  };
 }
 
 // 개발 환경용 로컬 저장소 초기화
@@ -57,16 +62,17 @@ export async function loadKnowledgeDocs(): Promise<KnowledgeDoc[]> {
         const content = await response.text();
         const { data } = matter(content);
 
-        docs.push({
-          id: data.id || blob.pathname.replace('knowledge/', '').replace('.md', ''),
-          title: data.title || 'Untitled',
-          type: data.type || 'web',
-          tags: data.tags || [],
-          createdAt: data.createdAt || new Date().toISOString(),
-          summary: data.summary,
-          content: content.replace(/^---[\s\S]*?---/, '').trim(),
-          url: data.url,
-        });
+      docs.push({
+        id: data.id || blob.pathname.replace('knowledge/', '').replace('.md', ''),
+        title: data.title || 'Untitled',
+        type: data.type || 'web',
+        tags: data.tags || [],
+        createdAt: data.createdAt || new Date().toISOString(),
+        summary: data.summary,
+        content: content.replace(/^---[\s\S]*?---/, '').trim(),
+        url: data.url,
+        metadata: (data.metadata as KnowledgeDoc['metadata']) || (data.topic ? { topic: data.topic } : undefined),
+      });
       }
 
       return docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -93,6 +99,7 @@ export async function loadKnowledgeDocs(): Promise<KnowledgeDoc[]> {
         summary: data.summary,
         content: content.replace(/^---[\s\S]*?---/, '').trim(),
         url: data.url,
+        metadata: (data.metadata as KnowledgeDoc['metadata']) || (data.topic ? { topic: data.topic } : undefined),
       });
     }
 
@@ -115,6 +122,15 @@ export async function saveKnowledgeDoc(doc: KnowledgeDoc): Promise<string> {
 
   if (doc.summary) metadata.summary = doc.summary;
   if (doc.url) metadata.url = doc.url;
+  if (doc.metadata?.topic) metadata.topic = doc.metadata.topic;
+  if (doc.metadata?.entityType) metadata.entityType = doc.metadata.entityType;
+  if (doc.metadata) {
+    for (const [key, value] of Object.entries(doc.metadata)) {
+      if (key !== 'topic' && key !== 'entityType' && value !== undefined) {
+        metadata[key] = value;
+      }
+    }
+  }
 
   const mdContent = matter.stringify(doc.content || doc.summary || '', metadata);
   const fileName = getDocFileName(doc.id);

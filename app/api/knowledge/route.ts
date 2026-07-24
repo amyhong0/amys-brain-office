@@ -96,7 +96,7 @@ async function callNvidiaLLM(prompt: string, systemPrompt: string): Promise<stri
   }
 }
 
-async function fetchWebContent(url: string): Promise<{ title: string; content: string; keywords: string[] }> {
+async function fetchWebContent(url: string): Promise<{ title: string; content: string; keywords: string[]; topic?: string }> {
   try {
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -150,7 +150,8 @@ async function fetchWebContent(url: string): Promise<{ title: string; content: s
 {
   "title": "50자 이내의 핵심 제목 (언론사명, 사이트명 제외)",
   "content": "800자 이내의 핵심 요약 (기자정보, 저작권문구, 광고, 네비게이션 등 불필요한 내용 제외)",
-  "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"]
+  "keywords": ["키워드1", "키워드2", "키워드3", "키워드4", "키워드5"],
+  "topic": "이 문서의 주제 또는 카테고리를 1~3단어로"
 }`;
 
     const userPrompt = `URL: ${url}
@@ -176,6 +177,7 @@ ${rawContent.substring(0, 12000)}
         const title = parsed.title?.trim() || rawTitle.trim();
         let content = parsed.content?.trim() || rawContent;
         let keywords: string[] = parsed.keywords || [];
+        const topic = parsed.topic?.trim() || keywords[0];
         
         if (keywords.length === 0) keywords = extractKeywordsFromContent(content);
 
@@ -185,7 +187,7 @@ ${rawContent.substring(0, 12000)}
           .replace(/이 시각 핫클릭 이슈[\s\S]*/g, '')
           .trim();
 
-        return { title, content, keywords };
+        return { title, content, keywords, topic };
       } catch (parseError) {
         console.error('LLM JSON parse error, trying regex fallback:', parseError);
         // JSON 파싱 실패 시 정규식으로 추출 시도
@@ -200,8 +202,9 @@ ${rawContent.substring(0, 12000)}
           keywords = keywordMatch[1].split(',').map(k => k.trim().replace(/"/g, '')).filter(k => k.length > 0);
         }
         if (keywords.length === 0) keywords = extractKeywordsFromContent(content);
+        const topic = keywords[0] || 'web';
         
-        return { title, content, keywords };
+        return { title, content, keywords, topic };
       }
     }
 
@@ -215,7 +218,8 @@ ${rawContent.substring(0, 12000)}
     return {
       title: rawTitle.trim(),
       content: fallbackClean.content || `URL: ${url}\n\n콘텐츠 추출 실패 - 직접 방문하여 확인하세요.`,
-      keywords: fallbackKeywords
+      keywords: fallbackKeywords,
+      topic: fallbackKeywords[0] || 'web'
     };
   } catch (error) {
     console.error('Failed to fetch web content:', error);
@@ -272,6 +276,9 @@ export async function POST(request: NextRequest) {
       summary,
       content,
       url,
+      metadata: {
+        topic: typeof tags === 'string' ? tags : (tags && (tags as any).topic) || (Array.isArray(tags) ? tags[0] : undefined) || title.split(' ')[0],
+      }
     };
 
     const filePath = await saveKnowledgeDoc(doc);

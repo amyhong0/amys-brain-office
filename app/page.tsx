@@ -103,7 +103,14 @@ export default function Home() {
       data: {
         label: doc.title || 'Untitled',
         type: doc.type,
-        metadata: { title: doc.title, type: doc.type, tags: doc.tags, createdAt: doc.createdAt, url: doc.url },
+        metadata: { 
+          title: doc.title, 
+          entityType: (doc as any).metadata?.topic || doc.type, 
+          topic: (doc as any).metadata?.topic, 
+          tags: doc.tags, 
+          createdAt: doc.createdAt, 
+          url: doc.url 
+        },
       },
       style: {
         width: 10,
