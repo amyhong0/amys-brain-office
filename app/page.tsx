@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import WizardTower from '@/components/agents/wizard-tower';
 import KnowledgeGraph from '@/components/graph/knowledge-graph';
 import ChatInterface, { Message } from '@/components/chat/chat-interface';
@@ -8,8 +8,7 @@ import KnowledgeHistory from '@/components/knowledge/knowledge-history';
 import { AgentState } from '@/lib/agents/types';
 import { Node, Edge } from 'reactflow';
 import { Upload, Link, LayoutDashboard, Share2, Archive } from 'lucide-react';
-
-const ThinkingOrb = lazy(() => import('thinking-orbs').then(mod => ({ default: mod.ThinkingOrb })));
+import { ThinkingOrb } from 'thinking-orbs';
 
 type Tab = 'dashboard' | 'graph' | 'history';
 
@@ -468,9 +467,7 @@ export default function Home() {
                 </div>
                 {isKnowledgeAdding && (
                   <div className="flex items-center justify-center gap-2 mt-2 text-purple-300 text-xs">
-                    <Suspense fallback={<div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"/>}>
-                      <ThinkingOrb state="working" size={20} theme="dark" />
-                    </Suspense>
+                    <ThinkingOrb state="working" size={20} theme="dark" />
                     <span>진행중...</span>
                   </div>
                 )}
